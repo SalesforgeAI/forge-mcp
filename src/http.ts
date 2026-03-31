@@ -18,7 +18,7 @@ app.use("/mcp", (_req, res, next) => {
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
   res.setHeader(
     "Access-Control-Allow-Headers",
-    "Authorization, Content-Type, Mcp-Session-Id, mcp-protocol-version, X-Primeforge-Key, X-Leadsforge-Key, X-Infraforge-Key, X-Warmforge-Key",
+    "Content-Type, Mcp-Session-Id, mcp-protocol-version, X-Salesforge-Key, X-Primeforge-Key, X-Leadsforge-Key, X-Infraforge-Key, X-Warmforge-Key, X-Mailforge-Key",
   );
   if (_req.method === "OPTIONS") {
     res.status(204).end();
@@ -28,21 +28,21 @@ app.use("/mcp", (_req, res, next) => {
 });
 
 app.all("/mcp", async (req, res) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith("Bearer ")) {
-    res.status(401).json({
-      jsonrpc: "2.0",
-      error: { code: -32001, message: "Missing Authorization: Bearer <api-key>" },
-      id: null,
-    });
-    return;
-  }
-
-  const sfKey = authHeader.slice(7);
+  const sfKey = req.headers["x-salesforge-key"] as string | undefined;
   const pfKey = req.headers["x-primeforge-key"] as string | undefined;
   const lfKey = req.headers["x-leadsforge-key"] as string | undefined;
   const ifKey = req.headers["x-infraforge-key"] as string | undefined;
   const wfKey = req.headers["x-warmforge-key"] as string | undefined;
+  const mfKey = req.headers["x-mailforge-key"] as string | undefined;
+
+  if (!sfKey && !pfKey && !lfKey && !ifKey && !wfKey && !mfKey) {
+    res.status(401).json({
+      jsonrpc: "2.0",
+      error: { code: -32001, message: "At least one product API key header is required" },
+      id: null,
+    });
+    return;
+  }
 
   const clients: ProductClients = {};
   if (sfKey) clients.salesforge = new SalesforgeClient(sfKey);
@@ -50,6 +50,7 @@ app.all("/mcp", async (req, res) => {
   if (lfKey) clients.leadsforge = new ApiClient(lfKey, "https://api.leadsforge.ai/public/v1", "LeadsForge");
   if (ifKey) clients.infraforge = new ApiClient(ifKey, "https://api.infraforge.ai/public", "InfraForge");
   if (wfKey) clients.warmforge = new ApiClient("Bearer " + wfKey, "https://api.warmforge.ai/public/v1", "WarmForge");
+  if (mfKey) clients.mailforge = new ApiClient(mfKey, "https://api.mailforge.ai/public", "MailForge");
 
   try {
     const server = createServer(clients);

@@ -1,6 +1,6 @@
 # Forge MCP Server
 
-A remote MCP server that connects AI assistants to the full Salesforge product suite: Salesforge, Primeforge, Leadsforge, Infraforge, and Warmforge.
+A remote MCP server that connects AI assistants to the full Salesforge product suite: Salesforge, Primeforge, Leadsforge, Infraforge, Warmforge, and Mailforge.
 
 Built on the [Model Context Protocol](https://modelcontextprotocol.io), works with Claude Desktop, Claude Code, Cursor, Windsurf, and any MCP-compatible client.
 
@@ -16,6 +16,8 @@ Built on the [Model Context Protocol](https://modelcontextprotocol.io), works wi
 
 **Warmforge** (12 tools) - Mailboxes, warmup stats, placement tests
 
+**Mailforge** (23 tools) - Workspaces, domains, mailboxes, DNS management, domain availability, auto-renewal, domain masking, forwarding
+
 Only provide API keys for the products you use. Tools for unconfigured products won't appear.
 
 ## Quick Start
@@ -30,11 +32,12 @@ Add to your `claude_desktop_config.json`:
     "salesforge": {
       "url": "https://mcp.salesforge.ai/mcp",
       "headers": {
-        "Authorization": "Bearer YOUR_SALESFORGE_API_KEY",
+        "X-Salesforge-Key": "YOUR_SALESFORGE_API_KEY",
         "X-Primeforge-Key": "YOUR_PRIMEFORGE_API_KEY",
         "X-Leadsforge-Key": "YOUR_LEADSFORGE_API_KEY",
         "X-Infraforge-Key": "YOUR_INFRAFORGE_API_KEY",
-        "X-Warmforge-Key": "YOUR_WARMFORGE_API_KEY"
+        "X-Warmforge-Key": "YOUR_WARMFORGE_API_KEY",
+        "X-Mailforge-Key": "YOUR_MAILFORGE_API_KEY"
       }
     }
   }
@@ -49,11 +52,12 @@ Remove header lines for products you don't use. Restart Claude Desktop after sav
 claude mcp add salesforge \
   --transport streamable-http \
   --url https://mcp.salesforge.ai/mcp \
-  --header "Authorization: Bearer YOUR_SALESFORGE_API_KEY" \
+  --header "X-Salesforge-Key: YOUR_SALESFORGE_API_KEY" \
   --header "X-Primeforge-Key: YOUR_PRIMEFORGE_API_KEY" \
   --header "X-Leadsforge-Key: YOUR_LEADSFORGE_API_KEY" \
   --header "X-Infraforge-Key: YOUR_INFRAFORGE_API_KEY" \
-  --header "X-Warmforge-Key: YOUR_WARMFORGE_API_KEY"
+  --header "X-Warmforge-Key: YOUR_WARMFORGE_API_KEY" \
+  --header "X-Mailforge-Key: YOUR_MAILFORGE_API_KEY"
 ```
 
 ### Cursor
@@ -74,16 +78,18 @@ Go to Settings > MCP and add a new server:
 | Leadsforge | [app.leadsforge.ai](https://app.leadsforge.ai) > Settings > API |
 | Infraforge | [app.infraforge.ai](https://app.infraforge.ai) > Settings > API |
 | Warmforge | [app.warmforge.ai](https://app.warmforge.ai) > Settings > API |
+| Mailforge | [app.mailforge.ai](https://app.mailforge.ai) > Settings > API |
 
 ## Authentication Headers
 
 | Product | Header | Format |
 |---|---|---|
-| Salesforge | `Authorization` | `Bearer YOUR_API_KEY` |
+| Salesforge | `X-Salesforge-Key` | `YOUR_API_KEY` |
 | Primeforge | `X-Primeforge-Key` | `YOUR_API_KEY` |
 | Leadsforge | `X-Leadsforge-Key` | `YOUR_API_KEY` |
 | Infraforge | `X-Infraforge-Key` | `YOUR_API_KEY` |
 | Warmforge | `X-Warmforge-Key` | `YOUR_API_KEY` |
+| Mailforge | `X-Mailforge-Key` | `YOUR_API_KEY` |
 
 ## Multiple Accounts
 
@@ -122,6 +128,8 @@ After setup, try asking your AI assistant:
 - "Search Leadsforge for CTOs at SaaS companies in New York"
 - "Check my Infraforge credit balance"
 - "Show warmup stats for my mailboxes"
+- "List my Mailforge domains"
+- "Check if example.com is available on Mailforge"
 
 ## Project Structure
 
@@ -151,7 +159,8 @@ src/
     ├── primeforge/       # domain, mailbox, workspace tools
     ├── leadsforge/       # search, enrichment, lookalike tools
     ├── infraforge/       # domain, mailbox, credit tools
-    └── warmforge/        # mailbox, placement test tools
+    ├── warmforge/        # mailbox, placement test tools
+    └── mailforge/        # workspace, domain, mailbox tools
 ```
 
 ## Self-Hosting
