@@ -7,18 +7,13 @@ export function registerDncTools(server: McpServer, client: SalesforgeClient) {
   server.registerTool(
     "add_dnc_entries",
     {
-      description: "Add multiple Do-Not-Contact entries to a workspace",
+      description: "Add multiple Do-Not-Contact entries to a workspace (up to 1000). Pass email addresses or domains as plain strings.",
       inputSchema: {
         workspaceId: z.string().describe("Workspace ID"),
-        entries: z.array(
-          z.object({
-            value: z.string().describe("Email address or domain to block"),
-            type: z.string().optional().describe("Type: email or domain"),
-          }),
-        ).describe("DNC entries to add"),
+        dncs: z.array(z.string()).min(1).max(1000).describe("Email addresses or domains to block (plain strings, e.g. 'user@example.com' or 'example.com')"),
       },
     },
-    ({ workspaceId, entries }) =>
-      handleTool(() => client.corePost(`/workspaces/${enc(workspaceId)}/dnc/bulk`, { entries })),
+    ({ workspaceId, dncs }) =>
+      handleTool(() => client.corePost(`/workspaces/${enc(workspaceId)}/dnc/bulk`, { dncs })),
   );
 }

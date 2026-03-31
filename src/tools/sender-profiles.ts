@@ -69,7 +69,7 @@ export function registerSenderProfileTools(server: McpServer, client: Salesforge
       inputSchema: {
         workspaceId: z.string().describe("Workspace ID"),
         sequenceId: z.string().describe("Sequence ID"),
-        senderProfileIds: z.array(z.string()).describe("Sender profile IDs to assign"),
+        senderProfileIds: z.array(z.number().int()).min(1).describe("Sender profile IDs (integers) to assign"),
       },
     },
     ({ workspaceId, sequenceId, senderProfileIds }) =>
@@ -83,7 +83,7 @@ export function registerSenderProfileTools(server: McpServer, client: Salesforge
       inputSchema: {
         workspaceId: z.string().describe("Workspace ID"),
         sequenceId: z.string().describe("Sequence ID"),
-        senderProfileIds: z.array(z.string()).describe("Sender profile IDs to remove"),
+        senderProfileIds: z.array(z.number().int()).min(1).max(50).describe("Sender profile IDs (integers) to remove"),
       },
     },
     ({ workspaceId, sequenceId, senderProfileIds }) =>

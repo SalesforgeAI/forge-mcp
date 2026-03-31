@@ -123,15 +123,24 @@ export function registerSequenceTools(server: McpServer, client: SalesforgeClien
   server.registerTool(
     "update_sequence_schedule",
     {
-      description: "Update the sending schedule for a multichannel sequence. Pass schedule object with day/time configuration.",
+      description: "Update the sending schedule for a multichannel sequence. Each day has enabled (boolean), from (hour 0-23), and to (hour 0-23).",
       inputSchema: {
         workspaceId: z.string().describe("Workspace ID"),
         sequenceId: z.string().describe("Sequence ID"),
-        schedule: z.record(z.string(), z.any()).describe("Schedule configuration object"),
+        timezone: z.string().describe("IANA timezone string (e.g. 'America/New_York', 'Asia/Kolkata')"),
+        schedule: z.object({
+          monday:    z.object({ enabled: z.boolean(), from: z.number().int().min(0).max(23), to: z.number().int().min(0).max(23) }).optional(),
+          tuesday:   z.object({ enabled: z.boolean(), from: z.number().int().min(0).max(23), to: z.number().int().min(0).max(23) }).optional(),
+          wednesday: z.object({ enabled: z.boolean(), from: z.number().int().min(0).max(23), to: z.number().int().min(0).max(23) }).optional(),
+          thursday:  z.object({ enabled: z.boolean(), from: z.number().int().min(0).max(23), to: z.number().int().min(0).max(23) }).optional(),
+          friday:    z.object({ enabled: z.boolean(), from: z.number().int().min(0).max(23), to: z.number().int().min(0).max(23) }).optional(),
+          saturday:  z.object({ enabled: z.boolean(), from: z.number().int().min(0).max(23), to: z.number().int().min(0).max(23) }).optional(),
+          sunday:    z.object({ enabled: z.boolean(), from: z.number().int().min(0).max(23), to: z.number().int().min(0).max(23) }).optional(),
+        }).describe("Schedule per day of week"),
       },
     },
-    ({ workspaceId, sequenceId, schedule }) =>
-      handleTool(() => client.mcPut(`${seqPath(workspaceId, sequenceId)}/schedule`, schedule)),
+    ({ workspaceId, sequenceId, timezone, schedule }) =>
+      handleTool(() => client.mcPut(`${seqPath(workspaceId, sequenceId)}/schedule`, { timezone, schedule })),
   );
 
   server.registerTool(

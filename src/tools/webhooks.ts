@@ -17,15 +17,26 @@ export function registerWebhookTools(server: McpServer, client: SalesforgeClient
   server.registerTool(
     "create_webhook",
     {
-      description: "Create a new webhook. Events: email_sent, email_opened, link_clicked, email_replied, linkedin_replied, contact_unsubscribed, email_bounced, positive_reply, negative_reply, label_changed, dnc_added",
+      description: "Create a new webhook. Each webhook subscribes to exactly one event type. To listen to multiple events, create multiple webhooks.",
       inputSchema: {
         workspaceId: z.string().describe("Workspace ID"),
+        name: z.string().describe("Webhook name"),
         url: z.string().describe("Webhook URL to receive events"),
-        events: z.array(z.string()).describe("Event types to subscribe to"),
+        type: z.enum([
+          "email_sent", "email_opened", "link_clicked", "email_replied",
+          "linkedin_replied", "contact_unsubscribed", "email_bounced",
+          "positive_reply", "negative_reply", "label_changed", "dnc_added",
+        ]).describe("Event type to subscribe to"),
+        sequenceId: z.string().optional().describe("Optional: scope this webhook to a specific sequence ID"),
       },
     },
-    ({ workspaceId, url, events }) =>
-      handleTool(() => client.corePost(`/workspaces/${enc(workspaceId)}/integrations/webhooks`, { url, events })),
+    ({ workspaceId, name, url, type, sequenceId }) =>
+      handleTool(() => client.corePost(`/workspaces/${enc(workspaceId)}/integrations/webhooks`, {
+        name,
+        url,
+        type,
+        ...(sequenceId !== undefined && { sequenceID: sequenceId }),
+      })),
   );
 
   server.registerTool(
