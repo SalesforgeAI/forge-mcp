@@ -73,21 +73,28 @@ export function registerMailboxTools(server: McpServer, client: SalesforgeClient
   server.registerTool(
     "reply_to_email",
     {
-      description: "Send a reply to an email",
+      description:
+        "Send a reply to an email thread. The reply is queued for sending (async). " +
+        "Use get_thread to read the conversation first, then provide the email ID of the message to reply to. " +
+        "The sender address and signature are automatically determined from the mailbox.",
       inputSchema: {
         workspaceId: z.string().describe("Workspace ID"),
         mailboxId: z.string().describe("Mailbox ID"),
-        emailId: z.string().describe("Email ID to reply to"),
-        body: z.string().describe("Reply body (HTML supported)"),
+        emailId: z.string().describe("Email ID to reply to (from get_thread response)"),
+        body: z.string().describe("Reply body content (HTML supported)"),
+        includeHistory: z
+          .boolean()
+          .optional()
+          .describe("Include original email thread in reply (default: false)"),
         cc: z.array(z.string()).optional().describe("CC email addresses"),
         bcc: z.array(z.string()).optional().describe("BCC email addresses"),
       },
     },
-    ({ workspaceId, mailboxId, emailId, ...payload }) =>
+    ({ workspaceId, mailboxId, emailId, body, includeHistory, cc, bcc }) =>
       handleTool(() =>
         client.corePost(
           `/workspaces/${enc(workspaceId)}/mailboxes/${enc(mailboxId)}/emails/${enc(emailId)}/reply`,
-          payload,
+          { content: body, includeHistory, ccs: cc, bccs: bcc },
         ),
       ),
   );

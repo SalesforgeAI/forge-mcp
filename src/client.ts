@@ -29,6 +29,10 @@ export class SalesforgeClient {
     return this.request<T>("POST", CORE_BASE_URL, path, undefined, body);
   }
 
+  async corePut<T>(path: string, body?: unknown): Promise<T> {
+    return this.request<T>("PUT", CORE_BASE_URL, path, undefined, body);
+  }
+
   async mcGet<T>(path: string, query?: Record<string, string>): Promise<T> {
     return this.request<T>("GET", MULTICHANNEL_BASE_URL, path, query);
   }
