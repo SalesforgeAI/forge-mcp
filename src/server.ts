@@ -15,6 +15,7 @@ import { registerEnrollmentTools } from "./tools/enrollments.js";
 import { registerSenderProfileTools } from "./tools/sender-profiles.js";
 import { registerValidationTools } from "./tools/validations.js";
 import { registerReferenceTools } from "./tools/reference.js";
+import { registerThreadTools } from "./tools/threads.js";
 import { registerPrimeforgeWorkspaceTools } from "./tools/primeforge/workspaces.js";
 import { registerPrimeforgeDomainTools } from "./tools/primeforge/domains.js";
 import { registerPrimeforgeMailboxTools } from "./tools/primeforge/mailboxes.js";
@@ -62,6 +63,7 @@ export function createServer(clients: ProductClients): McpServer {
     registerSenderProfileTools(server, c);
     registerValidationTools(server, c);
     registerReferenceTools(server, c);
+    registerThreadTools(server, c);
   }
 
   if (clients.primeforge) {
