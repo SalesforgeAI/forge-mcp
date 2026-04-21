@@ -17,6 +17,19 @@ const enrichmentInput = {
   clientRequestID: z.string().optional().describe("Client request ID for tracking (max 128 chars)"),
 };
 
+type EnrichmentBody = {
+  personIDs?: string[];
+  people?: unknown[];
+};
+
+function assertPersonsXOR(body: EnrichmentBody): void {
+  const hasIDs = (body.personIDs?.length ?? 0) > 0;
+  const hasPeople = (body.people?.length ?? 0) > 0;
+  if (hasIDs === hasPeople) {
+    throw new Error("Provide exactly one of `personIDs` or `people` (non-empty).");
+  }
+}
+
 export function registerLeadsforgeEnrichmentTools(server: McpServer, client: ApiClient) {
   server.registerTool(
     "leadsforge_enrich_emails",
@@ -24,7 +37,10 @@ export function registerLeadsforgeEnrichmentTools(server: McpServer, client: Api
       description: "Find email addresses. Async — returns a jobID; poll leadsforge_get_enrichment_job and fetch results with leadsforge_get_enrichment_results.",
       inputSchema: enrichmentInput,
     },
-    (body) => handleTool(() => client.post("/enrichment/emails", body)),
+    (body) => handleTool(() => {
+      assertPersonsXOR(body);
+      return client.post("/enrichment/emails", body);
+    }),
   );
 
   server.registerTool(
@@ -33,7 +49,10 @@ export function registerLeadsforgeEnrichmentTools(server: McpServer, client: Api
       description: "Find phone numbers. Async — returns a jobID; poll leadsforge_get_enrichment_job and fetch results with leadsforge_get_enrichment_results.",
       inputSchema: enrichmentInput,
     },
-    (body) => handleTool(() => client.post("/enrichment/phones", body)),
+    (body) => handleTool(() => {
+      assertPersonsXOR(body);
+      return client.post("/enrichment/phones", body);
+    }),
   );
 
   server.registerTool(
@@ -42,7 +61,10 @@ export function registerLeadsforgeEnrichmentTools(server: McpServer, client: Api
       description: "Find LinkedIn profiles. Async — returns a jobID; poll leadsforge_get_enrichment_job and fetch results with leadsforge_get_enrichment_results.",
       inputSchema: enrichmentInput,
     },
-    (body) => handleTool(() => client.post("/enrichment/linkedin", body)),
+    (body) => handleTool(() => {
+      assertPersonsXOR(body);
+      return client.post("/enrichment/linkedin", body);
+    }),
   );
 
   server.registerTool(
