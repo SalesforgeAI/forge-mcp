@@ -11,14 +11,13 @@ export function registerLeadsforgeLookalikesTools(server: McpServer, client: Api
       inputSchema: {
         domains: z.array(z.string()).describe("Company domains to find lookalikes for (1-10)"),
         locations: z.array(z.object({
-          country: z.string().optional(),
-          state: z.string().optional(),
-          city: z.string().optional(),
-        })).optional().describe("Location filters"),
+          id: z.string().describe("Location ID (use leadsforge_get_* filter tools to discover valid IDs)"),
+          type: z.enum(["region", "country"]).describe("Location type"),
+        })).optional().describe("Location filters — each entry is { id, type }"),
         employeeRanges: z.array(z.string()).optional().describe("Employee range filters"),
         fundingStages: z.array(z.string()).optional().describe("Funding stage filters"),
         categories: z.array(z.string()).optional().describe("Category filters"),
-        page: z.number().optional().describe("Page number"),
+        page: z.number().optional().describe("Page number (min 1)"),
         pageSize: z.number().optional().describe("Page size (1-100)"),
       },
     },
