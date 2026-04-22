@@ -20,8 +20,8 @@ export class ApiClient {
     return this.request<T>("GET", path, query);
   }
 
-  async post<T>(path: string, body?: unknown): Promise<T> {
-    return this.request<T>("POST", path, undefined, body);
+  async post<T>(path: string, body?: unknown, query?: Record<string, string>): Promise<T> {
+    return this.request<T>("POST", path, query, body);
   }
 
   async patch<T>(path: string, body?: unknown): Promise<T> {
