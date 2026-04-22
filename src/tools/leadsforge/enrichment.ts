@@ -84,11 +84,11 @@ export function registerLeadsforgeEnrichmentTools(server: McpServer, client: Api
       description: "Get results of a LeadsForge enrichment job",
       inputSchema: {
         jobID: z.string().describe("Enrichment job ID"),
-        limit: z.number().optional().describe("Max results"),
+        limit: z.number().optional().describe("Max results (defaults to 100; server rejects omission)"),
         offset: z.number().optional().describe("Offset"),
       },
     },
     ({ jobID, limit, offset }) =>
-      handleTool(() => client.get(`/enrichment/jobs/${jobID}/results`, buildQuery({ limit, offset }))),
+      handleTool(() => client.get(`/enrichment/jobs/${jobID}/results`, buildQuery({ limit: limit ?? 100, offset }))),
   );
 }

@@ -17,11 +17,11 @@ export function registerLeadsforgeLookalikesTools(server: McpServer, client: Api
         employeeRanges: z.array(z.string()).optional().describe("Employee range filters"),
         fundingStages: z.array(z.string()).optional().describe("Funding stage filters"),
         categories: z.array(z.string()).optional().describe("Category filters"),
-        page: z.number().optional().describe("Page number (min 1)"),
-        pageSize: z.number().optional().describe("Page size (1-100)"),
+        page: z.number().optional().describe("Page number (min 1; defaults to 1 — server rejects omission)"),
+        pageSize: z.number().optional().describe("Page size (1-100; defaults to 25)"),
       },
     },
-    (body) => handleTool(() => client.post("/lookalikes/search", body)),
+    (body) => handleTool(() => client.post("/lookalikes/search", { ...body, page: body.page ?? 1, pageSize: body.pageSize ?? 25 })),
   );
 
   server.registerTool(

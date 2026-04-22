@@ -35,7 +35,7 @@ export function registerLeadsforgeSearchTools(server: McpServer, client: ApiClie
       inputSchema: {
         leadLocations: includeExclude.describe("Contact location filter, e.g. { include: ['United States'] }"),
         companyLocations: includeExclude.describe("Company HQ location filter"),
-        companyIndustries: includeExclude.describe("Company industry filter"),
+        companyIndustries: includeExclude.describe("Company industry filter. Uses LinkedIn's standard industry taxonomy (exact match, lowercase). For free-form descriptors like 'lead generation' that aren't in the taxonomy, use companyKeywords instead."),
         leadSeniorities: includeExclude.describe("Seniority filter, e.g. { include: ['c_suite','owner','founder','director','vp','manager','head'] }"),
         leadDepartments: includeExclude.describe("Department filter, e.g. { include: ['c_suite','master_sales'] }"),
         leadJobTitles: includeExclude.describe("Job title filter"),
