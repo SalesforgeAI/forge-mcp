@@ -1,0 +1,19 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin 487452159728.dkr.ecr.eu-central-1.amazonaws.com
+  build:
+    commands:
+      - echo Building the Go API...
+      - docker build -t 487452159728.dkr.ecr.eu-central-1.amazonaws.com/salesforge-mcp-server:latest .
+  post_build:
+    commands:
+      - echo Pushing the Docker image to Amazon ECR...
+      - docker push 487452159728.dkr.ecr.eu-central-1.amazonaws.com/salesforge-mcp-server:latest
+      - echo write definitions file...
+      - printf '[{"name":"salesforge-mcp-server-pipeline","imageUri":"%s"}]' 487452159728.dkr.ecr.eu-central-1.amazonaws.com/salesforge-mcp-server:latest > imagedefinitions.json
+artifacts:
+  files: imagedefinitions.json
