@@ -97,6 +97,7 @@ export function registerPrimeforgeDomainTools(server: McpServer, client: ApiClie
       description: "Create mailboxes for a PrimeForge domain",
       inputSchema: {
         domainId: z.string().describe("Domain ID"),
+        workspaceId: z.string().describe("Workspace ID"),
         mailboxes: z.array(z.object({
           firstName: z.string(),
           lastName: z.string(),
@@ -107,7 +108,7 @@ export function registerPrimeforgeDomainTools(server: McpServer, client: ApiClie
         })).describe("Mailboxes to create"),
       },
     },
-    ({ domainId, mailboxes }) =>
-      handleTool(() => client.post(`/domains/${domainId}/mailboxes`, { mailboxes })),
+    ({ domainId, workspaceId, mailboxes }) =>
+      handleTool(() => client.post(`/domains/${domainId}/mailboxes`, { workspaceId, mailboxes })),
   );
 }
