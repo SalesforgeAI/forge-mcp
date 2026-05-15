@@ -31,6 +31,17 @@ export function registerWarmforgePlacementTestTools(server: McpServer, client: A
   );
 
   server.registerTool(
+    "warmforge_get_latest_mailbox_placement_results",
+    {
+      description: "Get the latest completed Warmforge placement test result for each mailbox ID",
+      inputSchema: {
+        mailboxIds: z.array(z.string()).min(1).max(100).describe("Mailbox IDs to fetch latest placement results for"),
+      },
+    },
+    ({ mailboxIds }) => handleTool(() => client.post("/mailboxes/placement-results/latest", { mailboxIds })),
+  );
+
+  server.registerTool(
     "warmforge_get_placement_test",
     {
       description: "Get a Warmforge placement test by ID",

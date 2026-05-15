@@ -14,7 +14,7 @@ Built on the [Model Context Protocol](https://modelcontextprotocol.io), works wi
 
 **Infraforge** (24 tools) - Workspaces, domains, mailboxes, DNS, domain availability, credits
 
-**Warmforge** (12 tools) - Mailboxes, warmup stats, placement tests
+**Warmforge** (13 tools) - Mailboxes, warmup stats, placement tests, latest mailbox placement results
 
 **Mailforge** (23 tools) - Workspaces, domains, mailboxes, DNS management, domain availability, auto-renewal, domain masking, forwarding
 
@@ -128,6 +128,7 @@ After setup, try asking your AI assistant:
 - "Search Leadsforge for CTOs at SaaS companies in New York"
 - "Check my Infraforge credit balance"
 - "Show warmup stats for my mailboxes"
+- "Show which Warmforge mailboxes have 100% latest placement results"
 - "List my Mailforge domains"
 - "Check if example.com is available on Mailforge"
 
