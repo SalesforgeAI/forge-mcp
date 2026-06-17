@@ -1,6 +1,9 @@
 const CORE_BASE_URL = "https://api.salesforge.ai/public/v2";
 const MULTICHANNEL_BASE_URL = "https://multichannel-api.salesforge.ai/public";
 
+export type QueryValue = string | readonly string[];
+export type QueryParams = Record<string, QueryValue>;
+
 export class SalesforgeApiError extends Error {
   constructor(
     public statusCode: number,
@@ -21,7 +24,7 @@ export class SalesforgeClient {
     this.apiKey = apiKey;
   }
 
-  async coreGet<T>(path: string, query?: Record<string, string>): Promise<T> {
+  async coreGet<T>(path: string, query?: QueryParams): Promise<T> {
     return this.request<T>("GET", CORE_BASE_URL, path, query);
   }
 
@@ -33,7 +36,7 @@ export class SalesforgeClient {
     return this.request<T>("PUT", CORE_BASE_URL, path, undefined, body);
   }
 
-  async mcGet<T>(path: string, query?: Record<string, string>): Promise<T> {
+  async mcGet<T>(path: string, query?: QueryParams): Promise<T> {
     return this.request<T>("GET", MULTICHANNEL_BASE_URL, path, query);
   }
 
@@ -74,14 +77,20 @@ export class SalesforgeClient {
     method: string,
     baseUrl: string,
     path: string,
-    query?: Record<string, string>,
+    query?: QueryParams,
     body?: unknown,
   ): Promise<T> {
     let url = `${baseUrl}${path}`;
     if (query) {
-      const params = new URLSearchParams(
-        Object.entries(query).filter(([, v]) => v !== undefined && v !== ""),
-      );
+      const params = new URLSearchParams();
+      for (const [key, value] of Object.entries(query)) {
+        if (value === undefined || value === null || value === "") continue;
+        if (Array.isArray(value)) {
+          for (const item of value) params.append(key, String(item));
+        } else {
+          params.append(key, String(value));
+        }
+      }
       const qs = params.toString();
       if (qs) url += `?${qs}`;
     }

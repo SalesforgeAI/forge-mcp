@@ -1,23 +1,51 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { SalesforgeClient } from "../client.js";
-import { handleTool, enc, buildQuery } from "../helpers.js";
+import { SalesforgeClient, type QueryParams } from "../client.js";
+import { handleTool, enc } from "../helpers.js";
+
+const VALIDATION_STATUSES = [
+  "safe",
+  "invalid",
+  "disabled",
+  "disposable",
+  "inbox_full",
+  "catch_all",
+  "role_account",
+  "spamtrap",
+  "unknown",
+  "unvalidated",
+] as const;
 
 export function registerContactTools(server: McpServer, client: SalesforgeClient) {
   server.registerTool(
     "list_contacts",
     {
-      description: "List contacts in a workspace with optional filters (tags, validation status, pagination)",
+      description: "List contacts in a workspace with optional filters (tags, validation statuses, ESPs, pagination)",
       inputSchema: {
         workspaceId: z.string().describe("Workspace ID"),
-        limit: z.number().optional().describe("Max results per page (default 50)"),
+        limit: z.number().optional().describe("Max results per page (default 10)"),
         offset: z.number().optional().describe("Offset for pagination"),
-        tagIds: z.string().optional().describe("Comma-separated tag IDs to filter by"),
-        validationStatus: z.string().optional().describe("Filter by validation status: safe, invalid, catch_all, unknown, etc."),
+        tagIds: z.array(z.string()).optional().describe("Tag IDs to filter by"),
+        validationStatuses: z
+          .array(z.enum(VALIDATION_STATUSES))
+          .optional()
+          .describe("Validation statuses to filter by"),
+        notInSequenceId: z.string().optional().describe("Filter to contacts not enrolled in this sequence ID"),
+        hasValidLinkedIn: z.boolean().optional().describe("Filter to contacts that have a valid LinkedIn URL"),
+        notInEsps: z.array(z.string()).optional().describe("Exclude contacts whose email domain belongs to these ESPs"),
       },
     },
-    ({ workspaceId, ...opts }) =>
-      handleTool(() => client.coreGet(`/workspaces/${enc(workspaceId)}/contacts`, buildQuery(opts))),
+    ({ workspaceId, limit, offset, tagIds, validationStatuses, notInSequenceId, hasValidLinkedIn, notInEsps }) => {
+      const query: QueryParams = {};
+      if (limit !== undefined) query.limit = String(limit);
+      if (offset !== undefined) query.offset = String(offset);
+      if (notInSequenceId !== undefined) query.not_in_sequence_id = notInSequenceId;
+      if (hasValidLinkedIn !== undefined) query.has_valid_linkedin = String(hasValidLinkedIn);
+      if (tagIds && tagIds.length) query["tag_ids[]"] = tagIds;
+      if (validationStatuses && validationStatuses.length) query["validation_statuses[]"] = validationStatuses;
+      if (notInEsps && notInEsps.length) query["not_in_esps[]"] = notInEsps;
+      return handleTool(() => client.coreGet(`/workspaces/${enc(workspaceId)}/contacts`, query));
+    },
   );
 
   server.registerTool(
