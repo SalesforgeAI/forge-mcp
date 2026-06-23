@@ -10,12 +10,19 @@ export function registerValidationTools(server: McpServer, client: SalesforgeCli
       description: "Start an email validation run for contacts in a workspace",
       inputSchema: {
         workspaceId: z.string().describe("Workspace ID"),
-        filters: z.record(z.string(), z.any()).optional().describe("Filters to select contacts for validation"),
+        filters: z
+          .record(z.string(), z.any())
+          .describe(
+            "Filters to select contacts for validation. Must be a non-empty object; " +
+              "accepted keys include tagIds, validationStatuses, esps, notInEsps, leadIds, " +
+              "hasValidLinkedIn, hasEmail, searchQuery (see multichannel-api ValidationFiltersRequest).",
+          ),
+        limit: z.number().optional().describe("Maximum number of contacts to validate in this run"),
       },
     },
-    ({ workspaceId, filters }) =>
+    ({ workspaceId, filters, limit }) =>
       handleTool(() =>
-        client.mcPost(`/multichannel/workspaces/${enc(workspaceId)}/validations`, filters ? { filters } : {}),
+        client.mcPost(`/multichannel/workspaces/${enc(workspaceId)}/validations`, { filters, limit }),
       ),
   );
 
