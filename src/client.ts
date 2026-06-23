@@ -60,7 +60,7 @@ export class SalesforgeClient {
     const url = `${CORE_BASE_URL}${path}`;
     const resp = await fetch(url, {
       method: "GET",
-      headers: { Authorization: this.apiKey },
+      headers: { Authorization: this.apiKey, "X-Source": "forge-mcp" },
     });
     if (!resp.ok) {
       const body = await resp.text();
@@ -98,6 +98,7 @@ export class SalesforgeClient {
     const headers: Record<string, string> = {
       Authorization: this.apiKey,
       Accept: "application/json",
+      "X-Source": "forge-mcp",
     };
 
     const init: RequestInit = { method, headers };
