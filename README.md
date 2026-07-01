@@ -14,7 +14,7 @@ Built on the [Model Context Protocol](https://modelcontextprotocol.io), works wi
 
 **Infraforge** (24 tools) - Workspaces, domains, mailboxes, DNS, domain availability, credits
 
-**Warmforge** (13 tools) - Mailboxes, warmup stats, placement tests, latest mailbox placement results
+**Warmforge** (15 tools) - Workspaces, mailboxes, warmup stats, placement tests, latest mailbox placement results
 
 **Mailforge** (23 tools) - Workspaces, domains, mailboxes, DNS management, domain availability, auto-renewal, domain masking, forwarding
 
@@ -160,7 +160,7 @@ src/
     ├── primeforge/       # domain, mailbox, workspace tools
     ├── leadsforge/       # search, enrichment, lookalike tools
     ├── infraforge/       # domain, mailbox, credit tools
-    ├── warmforge/        # mailbox, placement test tools
+    ├── warmforge/        # workspace, mailbox, placement test tools
     └── mailforge/        # workspace, domain, mailbox tools
 ```
 

@@ -45,6 +45,13 @@
           "format": "string"
         },
         {
+          "name": "WARMFORGE_API_KEY",
+          "description": "API key for Warmforge (app.warmforge.ai > Settings > API)",
+          "isRequired": false,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
           "name": "MAILFORGE_API_KEY",
           "description": "API key for Mailforge (app.mailforge.ai > Settings > API)",
           "isRequired": false,
