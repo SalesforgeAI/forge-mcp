@@ -1,7 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { ApiClient } from "../../api-client.js";
-import { handleTool, buildQuery } from "../../helpers.js";
+import { buildQuery, enc, handleTool } from "../../helpers.js";
+import { optionalWorkspaceIdSchema, resolveWarmforgePath } from "./workspaces.js";
 
 export function registerWarmforgeMailboxTools(server: McpServer, client: ApiClient) {
   server.registerTool(
@@ -9,6 +10,7 @@ export function registerWarmforgeMailboxTools(server: McpServer, client: ApiClie
     {
       description: "List Warmforge mailboxes (paginated). Status: warm, pending, disconnected, suspended, all",
       inputSchema: {
+        workspaceId: optionalWorkspaceIdSchema,
         page: z.number().describe("Page number (starts at 1)"),
         page_size: z.number().describe("Results per page (1-100)"),
         search: z.string().optional().describe("Search filter"),
@@ -16,8 +18,13 @@ export function registerWarmforgeMailboxTools(server: McpServer, client: ApiClie
         external_reference: z.string().optional().describe("Filter by external reference"),
       },
     },
-    ({ page, page_size, search, status, external_reference }) =>
-      handleTool(() => client.get("/mailboxes", buildQuery({ page, page_size, search, status, external_reference }))),
+    ({ workspaceId, page, page_size, search, status, external_reference }) =>
+      handleTool(() =>
+        client.get(
+          resolveWarmforgePath(workspaceId, "/mailboxes"),
+          buildQuery({ page, page_size, search, status, external_reference }),
+        ),
+      ),
   );
 
   server.registerTool(
@@ -25,10 +32,12 @@ export function registerWarmforgeMailboxTools(server: McpServer, client: ApiClie
     {
       description: "Get a Warmforge mailbox by email address",
       inputSchema: {
+        workspaceId: optionalWorkspaceIdSchema,
         address: z.string().describe("Email address"),
       },
     },
-    ({ address }) => handleTool(() => client.get(`/mailboxes/${encodeURIComponent(address)}`)),
+    ({ workspaceId, address }) =>
+      handleTool(() => client.get(resolveWarmforgePath(workspaceId, `/mailboxes/${enc(address)}`))),
   );
 
   server.registerTool(
@@ -36,10 +45,14 @@ export function registerWarmforgeMailboxTools(server: McpServer, client: ApiClie
     {
       description: "Connect an SMTP mailbox to Warmforge",
       inputSchema: {
-        body: z.record(z.string(), z.any()).describe("SMTP connection payload (address, firstName, lastName, smtp/imap config, warmup settings)"),
+        workspaceId: optionalWorkspaceIdSchema,
+        body: z
+          .record(z.string(), z.any())
+          .describe("SMTP connection payload (address, firstName, lastName, smtp/imap config, warmup settings)"),
       },
     },
-    ({ body }) => handleTool(() => client.post("/mailboxes/connect-smtp", body)),
+    ({ workspaceId, body }) =>
+      handleTool(() => client.post(resolveWarmforgePath(workspaceId, "/mailboxes/connect-smtp"), body)),
   );
 
   server.registerTool(
@@ -47,10 +60,12 @@ export function registerWarmforgeMailboxTools(server: McpServer, client: ApiClie
     {
       description: "Connect an OAuth2 mailbox to Warmforge",
       inputSchema: {
+        workspaceId: optionalWorkspaceIdSchema,
         body: z.record(z.string(), z.any()).describe("OAuth2 connection payload"),
       },
     },
-    ({ body }) => handleTool(() => client.post("/mailboxes/connect-oauth2", body)),
+    ({ workspaceId, body }) =>
+      handleTool(() => client.post(resolveWarmforgePath(workspaceId, "/mailboxes/connect-oauth2"), body)),
   );
 
   server.registerTool(
@@ -58,11 +73,13 @@ export function registerWarmforgeMailboxTools(server: McpServer, client: ApiClie
     {
       description: "Update a Warmforge mailbox",
       inputSchema: {
+        workspaceId: optionalWorkspaceIdSchema,
         address: z.string().describe("Email address"),
         body: z.record(z.string(), z.any()).describe("Update payload (warmup config, name, etc.)"),
       },
     },
-    ({ address, body }) => handleTool(() => client.patch(`/mailboxes/${encodeURIComponent(address)}`, body)),
+    ({ workspaceId, address, body }) =>
+      handleTool(() => client.patch(resolveWarmforgePath(workspaceId, `/mailboxes/${enc(address)}`), body)),
   );
 
   server.registerTool(
@@ -70,10 +87,12 @@ export function registerWarmforgeMailboxTools(server: McpServer, client: ApiClie
     {
       description: "Update multiple Warmforge mailboxes at once",
       inputSchema: {
+        workspaceId: optionalWorkspaceIdSchema,
         body: z.record(z.string(), z.any()).describe("Bulk update payload"),
       },
     },
-    ({ body }) => handleTool(() => client.post("/mailboxes/bulk-update", body)),
+    ({ workspaceId, body }) =>
+      handleTool(() => client.post(resolveWarmforgePath(workspaceId, "/mailboxes/bulk-update"), body)),
   );
 
   server.registerTool(
@@ -81,10 +100,12 @@ export function registerWarmforgeMailboxTools(server: McpServer, client: ApiClie
     {
       description: "Delete a Warmforge mailbox",
       inputSchema: {
+        workspaceId: optionalWorkspaceIdSchema,
         address: z.string().describe("Email address"),
       },
     },
-    ({ address }) => handleTool(() => client.delete(`/mailboxes/${encodeURIComponent(address)}`)),
+    ({ workspaceId, address }) =>
+      handleTool(() => client.delete(resolveWarmforgePath(workspaceId, `/mailboxes/${enc(address)}`))),
   );
 
   server.registerTool(
@@ -92,9 +113,18 @@ export function registerWarmforgeMailboxTools(server: McpServer, client: ApiClie
     {
       description: "Get warmup statistics for a Warmforge mailbox",
       inputSchema: {
+        workspaceId: optionalWorkspaceIdSchema,
         address: z.string().describe("Email address"),
+        from: z.string().describe("Start date (YYYY-MM-DD)"),
+        to: z.string().describe("End date (YYYY-MM-DD)"),
       },
     },
-    ({ address }) => handleTool(() => client.get(`/mailboxes/${encodeURIComponent(address)}/warmup/stats`)),
+    ({ workspaceId, address, from, to }) =>
+      handleTool(() =>
+        client.get(
+          resolveWarmforgePath(workspaceId, `/mailboxes/${enc(address)}/warmup/stats`),
+          buildQuery({ from, to }),
+        ),
+      ),
   );
 }

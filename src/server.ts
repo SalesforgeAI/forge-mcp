@@ -28,6 +28,7 @@ import { registerInfraforgeMailboxTools } from "./tools/infraforge/mailboxes.js"
 import { registerInfraforgeCreditTools } from "./tools/infraforge/credits.js";
 import { registerWarmforgeMailboxTools } from "./tools/warmforge/mailboxes.js";
 import { registerWarmforgePlacementTestTools } from "./tools/warmforge/placement-tests.js";
+import { registerWarmforgeWorkspaceTools } from "./tools/warmforge/workspaces.js";
 import { registerMailforgeWorkspaceTools } from "./tools/mailforge/workspaces.js";
 import { registerMailforgeDomainTools } from "./tools/mailforge/domains.js";
 import { registerMailforgeMailboxTools } from "./tools/mailforge/mailboxes.js";
@@ -90,6 +91,7 @@ export function createServer(clients: ProductClients): McpServer {
 
   if (clients.warmforge) {
     const c = clients.warmforge;
+    registerWarmforgeWorkspaceTools(server, c);
     registerWarmforgeMailboxTools(server, c);
     registerWarmforgePlacementTestTools(server, c);
   }
