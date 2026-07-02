@@ -9,6 +9,7 @@ import { registerDncTools } from "./tools/dnc.js";
 import { registerCustomVarTools } from "./tools/custom-vars.js";
 import { registerWebhookTools } from "./tools/webhooks.js";
 import { registerSequenceTools } from "./tools/sequences.js";
+import { registerSubsequenceTools } from "./tools/subsequences.js";
 import { registerNodeTools } from "./tools/nodes.js";
 import { registerBranchTools } from "./tools/branches.js";
 import { registerEnrollmentTools } from "./tools/enrollments.js";
@@ -58,6 +59,7 @@ export function createServer(clients: ProductClients): McpServer {
     registerCustomVarTools(server, c);
     registerWebhookTools(server, c);
     registerSequenceTools(server, c);
+    registerSubsequenceTools(server, c);
     registerNodeTools(server, c);
     registerBranchTools(server, c);
     registerEnrollmentTools(server, c);

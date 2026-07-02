@@ -32,6 +32,7 @@ export function registerSequenceTools(server: McpServer, client: SalesforgeClien
         name: z.string().describe("Sequence name"),
         description: z.string().optional().describe("Sequence description"),
         timezone: z.string().optional().describe("IANA timezone (e.g. America/New_York)"),
+        kind: z.enum(["primary", "subsequence"]).optional().describe("Sequence kind (default primary). Use subsequence for follow-up flows triggered by Primebox labels."),
       },
     },
     ({ workspaceId, ...body }) =>
