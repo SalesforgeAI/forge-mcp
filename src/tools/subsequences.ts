@@ -37,20 +37,29 @@ export function registerSubsequenceTools(server: McpServer, client: SalesforgeCl
           ...(timezone !== undefined && { timezone }),
         });
 
-        const assignment = await client.mcPost(
-          `${seqPath(workspaceId, parentSequenceId)}/subsequence-assignments`,
-          {
-            childSequenceId: subsequence.id,
+        try {
+          const assignment = await client.mcPost(
+            `${seqPath(workspaceId, parentSequenceId)}/subsequence-assignments`,
+            {
+              childSequenceId: subsequence.id,
+              ...(priority !== undefined && { priority }),
+            },
+          );
+
+          const trigger = await client.mcPost(subsequenceTriggersPath(workspaceId, String(subsequence.id)), {
+            labelId,
             ...(priority !== undefined && { priority }),
-          },
-        );
+          });
 
-        const trigger = await client.mcPost(subsequenceTriggersPath(workspaceId, String(subsequence.id)), {
-          labelId,
-          ...(priority !== undefined && { priority }),
-        });
-
-        return { subsequence, assignment, trigger };
+          return { subsequence, assignment, trigger };
+        } catch (error) {
+          try {
+            await client.mcDelete(seqPath(workspaceId, String(subsequence.id)));
+          } catch {
+            // Best-effort cleanup for partially created subsequences.
+          }
+          throw error;
+        }
       }),
   );
 
