@@ -48,21 +48,46 @@ export function registerContactTools(server: McpServer, client: SalesforgeClient
     },
   );
 
+  const contactFields = {
+    firstName: z.string().describe("First name (required)"),
+    lastName: z.string().optional().describe("Last name"),
+    email: z.string().optional().describe("Email address (also used to match an existing contact)"),
+    company: z.string().optional().describe("Company name"),
+    position: z.string().optional().describe("Job title/position"),
+    linkedinUrl: z
+      .string()
+      .optional()
+      .describe("LinkedIn profile URL (also used to match an existing contact)"),
+    tags: z.array(z.string()).optional().describe("Tag names to assign"),
+    tagIds: z.array(z.string()).optional().describe("Tag IDs to assign"),
+    customVars: z
+      .record(z.string(), z.string())
+      .optional()
+      .describe("Custom variables as key-value pairs (non-empty keys and values)"),
+  };
+
   server.registerTool(
     "create_contact",
     {
-      description: "Create a single contact in a workspace",
+      description:
+        "Create a contact in a workspace. If a contact with the same email or LinkedIn URL already exists, it is updated (including customVars).",
       inputSchema: {
         workspaceId: z.string().describe("Workspace ID"),
-        firstName: z.string().describe("First name (required)"),
-        lastName: z.string().optional().describe("Last name"),
-        email: z.string().optional().describe("Email address"),
-        company: z.string().optional().describe("Company name"),
-        position: z.string().optional().describe("Job title/position"),
-        linkedinUrl: z.string().optional().describe("LinkedIn profile URL"),
-        tags: z.array(z.string()).optional().describe("Tag names to assign"),
-        tagIds: z.array(z.string()).optional().describe("Tag IDs to assign"),
-        customVars: z.record(z.string(), z.string()).optional().describe("Custom variables as key-value pairs"),
+        ...contactFields,
+      },
+    },
+    ({ workspaceId, ...body }) =>
+      handleTool(() => client.corePost(`/workspaces/${enc(workspaceId)}/contacts`, body)),
+  );
+
+  server.registerTool(
+    "update_contact",
+    {
+      description:
+        "Update a contact matched by email or LinkedIn URL (upsert). Use customVars to set or overwrite custom variables as key-value pairs, same shape as create_contact.",
+      inputSchema: {
+        workspaceId: z.string().describe("Workspace ID"),
+        ...contactFields,
       },
     },
     ({ workspaceId, ...body }) =>
@@ -72,22 +97,25 @@ export function registerContactTools(server: McpServer, client: SalesforgeClient
   server.registerTool(
     "bulk_create_contacts",
     {
-      description: "Create up to 100 contacts in a workspace at once",
+      description:
+        "Create up to 100 contacts in a workspace at once. Existing contacts matched by email or LinkedIn URL are updated (including customVars).",
       inputSchema: {
         workspaceId: z.string().describe("Workspace ID"),
-        contacts: z.array(
-          z.object({
-            firstName: z.string().describe("First name (required)"),
-            lastName: z.string().optional(),
-            email: z.string().optional(),
-            company: z.string().optional(),
-            position: z.string().optional(),
-            linkedinUrl: z.string().optional(),
-            tags: z.array(z.string()).optional(),
-            tagIds: z.array(z.string()).optional(),
-            customVars: z.record(z.string(), z.string()).optional(),
-          }),
-        ).describe("Array of contacts (1-100)"),
+        contacts: z.array(z.object(contactFields)).describe("Array of contacts (1-100)"),
+      },
+    },
+    ({ workspaceId, contacts }) =>
+      handleTool(() => client.corePost(`/workspaces/${enc(workspaceId)}/contacts/bulk`, { contacts })),
+  );
+
+  server.registerTool(
+    "bulk_update_contacts",
+    {
+      description:
+        "Update up to 100 contacts at once (upsert by email or LinkedIn URL). Each contact can include customVars as key-value pairs, same shape as bulk_create_contacts.",
+      inputSchema: {
+        workspaceId: z.string().describe("Workspace ID"),
+        contacts: z.array(z.object(contactFields)).describe("Array of contacts (1-100)"),
       },
     },
     ({ workspaceId, contacts }) =>
