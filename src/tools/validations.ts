@@ -22,7 +22,13 @@ export function registerValidationTools(server: McpServer, client: SalesforgeCli
     },
     ({ workspaceId, filters, limit }) =>
       handleTool(() =>
-        client.mcPost(`/multichannel/workspaces/${enc(workspaceId)}/validations`, { filters, limit }),
+        client.mcPost(`/multichannel/workspaces/${enc(workspaceId)}/validations`, {
+          filters,
+          limit,
+          // Contacts already in a sequence cannot be validated. Ask the API to report that as a
+          // completed empty run instead of an error, so the agent does not retry the same contacts.
+          strict: false,
+        }),
       ),
   );
 
