@@ -91,11 +91,12 @@ export function registerMailboxTools(server: McpServer, client: SalesforgeClient
       },
     },
     ({ workspaceId, mailboxId, emailId, body, includeHistory, cc, bcc }) =>
-      handleTool(() =>
-        client.corePost(
+      handleTool(async () => {
+        await client.corePost(
           `/workspaces/${enc(workspaceId)}/mailboxes/${enc(mailboxId)}/emails/${enc(emailId)}/reply`,
           { content: body, includeHistory, ccs: cc, bccs: bcc },
-        ),
-      ),
+        );
+        return { status: "accepted", message: "Reply queued for sending" };
+      }),
   );
 }

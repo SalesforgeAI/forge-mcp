@@ -71,10 +71,12 @@ export class ApiClient {
       throw new ApiError(resp.status, text, this.product);
     }
 
-    if (resp.status === 204) {
+    // 204 No Content / 202 Accepted (and other empty success bodies) have no JSON
+    const text = await resp.text();
+    if (!text) {
       return {} as T;
     }
 
-    return (await resp.json()) as T;
+    return JSON.parse(text) as T;
   }
 }
