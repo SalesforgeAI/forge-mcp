@@ -115,12 +115,11 @@ export class SalesforgeClient {
       throw new SalesforgeApiError(resp.status, text);
     }
 
-    // 204 No Content / 202 Accepted (and other empty success bodies) have no JSON
-    const text = await resp.text();
-    if (!text) {
+    // 204 No Content / 202 Accepted return an empty body
+    if (resp.status === 204 || resp.status === 202) {
       return {} as T;
     }
 
-    return JSON.parse(text) as T;
+    return (await resp.json()) as T;
   }
 }
