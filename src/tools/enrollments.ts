@@ -29,7 +29,9 @@ export function registerEnrollmentTools(server: McpServer, client: SalesforgeCli
   server.registerTool(
     "enroll_contacts",
     {
-      description: "Enroll contacts into a multichannel sequence using filters (lead IDs, tags, ESPs, validation status)",
+      title: "Enroll Contacts (Deprecated)",
+      description:
+        "DEPRECATED: Use preflight_enrollments followed by confirm_enrollment_preflight. This legacy tool immediately enrolls matching contacts without exposing the preflight conflict and replied-contact decisions.",
       inputSchema: {
         workspaceId: z.string().describe("Workspace ID"),
         sequenceId: z.string().describe("Sequence ID"),
