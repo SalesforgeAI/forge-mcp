@@ -25,6 +25,37 @@ const enrollmentFiltersSchema = z.object({
   hasValidLinkedIn: z.boolean().optional().describe("When true, select only contacts with a valid LinkedIn URL"),
 });
 
+const confirmEnrollmentPreflightSchema = z
+  .object({
+    workspaceId: z.string().describe("Workspace ID"),
+    sequenceId: z.string().describe("Target sequence ID"),
+    preflightId: z.string().describe("Preflight ID returned by preflight_enrollments"),
+    action: z
+      .enum(["skip", "move"])
+      .describe("skip ignores all contacts requiring a decision; move resolves covered source conflicts"),
+    moveSourceSequenceIds: z
+      .array(z.number().int().positive())
+      .optional()
+      .describe(
+        "Used only for action=move; a contact is skipped unless every source sequence requiring cleanup for that contact is selected",
+      ),
+    skipReplied: z
+      .boolean()
+      .optional()
+      .describe(
+        "Required for action=move: true leaves previously replied contacts unenrolled; false explicitly allows their enrollment. Omit for action=skip.",
+      ),
+  })
+  .superRefine(({ action, skipReplied }, ctx) => {
+    if (action === "move" && skipReplied === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["skipReplied"],
+        message: "skipReplied is required when action is move",
+      });
+    }
+  });
+
 export function registerEnrollmentTools(server: McpServer, client: SalesforgeClient) {
   server.registerTool(
     "enroll_contacts",
@@ -84,7 +115,7 @@ export function registerEnrollmentTools(server: McpServer, client: SalesforgeCli
     "preview_enrollment_move",
     {
       description:
-        "Recalculate move-mode counts for a saved preflight without changing enrollments. Returns moveModeEnrollCount, moveCleanupContactCount, repliedSkippedCount, and skippedByUncheckedGroupCount. A stale preflight fails with a replacement preflight in the error data.",
+        "Recalculate move-mode counts for a saved preflight without changing enrollments. Returns moveModeEnrollCount, moveCleanupContactCount, repliedSkippedCount, and skippedByUncheckedGroupCount. skipReplied must be an explicit choice so the preview matches confirmation. A stale preflight returns 409 preflight_stale with a replacement preflight in the error data; use that replacement instead of retrying the old preflight.",
       inputSchema: {
         workspaceId: z.string().describe("Workspace ID"),
         sequenceId: z.string().describe("Target sequence ID"),
@@ -97,8 +128,9 @@ export function registerEnrollmentTools(server: McpServer, client: SalesforgeCli
           ),
         skipReplied: z
           .boolean()
-          .optional()
-          .describe("When true, exclude contacts with a previous reply from move-mode enrollment; defaults to false"),
+          .describe(
+            "Required explicit choice: true excludes contacts with a previous reply; false includes eligible replied contacts",
+          ),
       },
     },
     ({ workspaceId, sequenceId, preflightId, moveSourceSequenceIds, skipReplied }) =>
@@ -114,25 +146,8 @@ export function registerEnrollmentTools(server: McpServer, client: SalesforgeCli
     "confirm_enrollment_preflight",
     {
       description:
-        "Apply a saved enrollment preflight if its enrollment state is still current. skip enrolls only candidates that require no conflict decision and performs no source cleanup. move enrolls eligible candidates whose cleanup conflicts are covered by moveSourceSequenceIds, cleans those source enrollments, and can exclude replied contacts. Returns enrolled lead IDs and enrolled, skipped, moved, and already-in-target counts. A stale preflight fails with a replacement preflight in the error data; an expired preflight is not found.",
-      inputSchema: {
-        workspaceId: z.string().describe("Workspace ID"),
-        sequenceId: z.string().describe("Target sequence ID"),
-        preflightId: z.string().describe("Preflight ID returned by preflight_enrollments"),
-        action: z
-          .enum(["skip", "move"])
-          .describe("skip ignores all contacts requiring a decision; move resolves covered source conflicts"),
-        moveSourceSequenceIds: z
-          .array(z.number().int().positive())
-          .optional()
-          .describe(
-            "Used only for action=move; a contact is skipped unless every source sequence requiring cleanup for that contact is selected",
-          ),
-        skipReplied: z
-          .boolean()
-          .optional()
-          .describe("Used only for action=move; when true, contacts with a previous reply remain unenrolled"),
-      },
+        "Apply a saved enrollment preflight if its enrollment state is still current. skip enrolls only candidates that require no conflict decision and performs no source cleanup. move requires an explicit skipReplied choice, enrolls eligible candidates whose cleanup conflicts are covered by moveSourceSequenceIds, and cleans those source enrollments. Headroom is rechecked while confirmations are serialized per account, and cleanup from paused source sequences does not create active-enrollment headroom. Returns enrolled lead IDs and enrolled, skipped, moved, and already-in-target counts. A stale preflight returns 409 preflight_stale with a replacement preflight in the error data; continue with the replacement, not the old ID. A concurrent confirmation returns 423 enrollment_confirmation_busy; retry the same confirmation after the in-progress request finishes. An expired preflight returns 404 and requires a new preflight.",
+      inputSchema: confirmEnrollmentPreflightSchema,
     },
     ({ workspaceId, sequenceId, preflightId, action, moveSourceSequenceIds, skipReplied }) =>
       handleTool(() =>
