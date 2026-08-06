@@ -76,7 +76,8 @@ export function registerMailboxTools(server: McpServer, client: SalesforgeClient
       description:
         "Send a reply to an email thread. The reply is queued for sending (async). " +
         "Use get_thread to read the conversation first, then provide the email ID of the message to reply to. " +
-        "The sender address and signature are automatically determined from the mailbox.",
+        "The sender address is determined from the mailbox. The tool does not add a signature automatically; " +
+        "use get_mailbox and include its resolvedSignature in the body when a signature is wanted. use `<div>&nbsp;</div>\n<div>--</div>` to separate the signature from the body.",
       inputSchema: {
         workspaceId: z.string().describe("Workspace ID"),
         mailboxId: z.string().describe("Mailbox ID"),
