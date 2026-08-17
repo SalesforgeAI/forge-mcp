@@ -11,39 +11,64 @@ const enrollmentFiltersSchema = z.object({
   leadIds: z
     .array(z.string())
     .optional()
-    .describe("Explicit contact IDs; intersected with validationRunId contacts when both are provided"),
-  tagIds: z.array(z.string()).optional().describe("Tag IDs to filter contacts"),
-  esps: z.array(z.string()).optional().describe("Email service providers to filter contacts"),
-  validationRunId: z.string().optional().describe("Select contacts included in this validation run"),
-  validationStatuses: z
-    .array(z.string())
+    .describe("Contact IDs to include. Intersected with validationRunId when both are provided."),
+  notInLeadIds: z.array(z.string()).optional().describe("Contact IDs to exclude."),
+  tagIds: z.array(z.string()).optional().describe("Tag IDs to include."),
+  notInTagIds: z.array(z.string()).optional().describe("Tag IDs to exclude."),
+  esps: z.array(z.string()).optional().describe("Email service providers to include."),
+  notInESPs: z.array(z.string()).optional().describe("Email service providers to exclude."),
+  customVars: z.array(z.string()).optional().describe("Custom variable values to include."),
+  notInCustomVars: z.array(z.string()).optional().describe("Custom variable values to exclude."),
+  customVarIds: z.array(z.string()).optional().describe("Custom variable IDs to include."),
+  notInCustomVarIds: z.array(z.string()).optional().describe("Custom variable IDs to exclude."),
+  searchQuery: z.string().optional().describe("Contact search query."),
+  validationRunId: z
+    .string()
     .optional()
-    .describe(
-      "Email validation statuses: safe, invalid, disabled, disposable, inbox_full, catch_all, role_account, spamtrap, unknown, unvalidated, or linkedin_only",
-    ),
-  hasEmail: z.boolean().optional().describe("When true, select only contacts that have an email address"),
-  hasValidLinkedIn: z.boolean().optional().describe("When true, select only contacts with a valid LinkedIn URL"),
+    .describe("Completed validation run ID. The run must contain at least one contact."),
+  validationStatuses: z
+    .array(
+      z.enum([
+        "safe",
+        "invalid",
+        "disabled",
+        "disposable",
+        "inbox_full",
+        "catch_all",
+        "role_account",
+        "spamtrap",
+        "unknown",
+        "unvalidated",
+        "linkedin_only",
+      ]),
+    )
+    .optional()
+    .describe("Email validation statuses to include."),
+  excludeContacted: z.boolean().optional().describe("Whether to exclude previously contacted contacts."),
+  deleted: z.boolean().optional().describe("Whether to include soft-deleted contacts."),
+  hasEmail: z.boolean().optional().describe("Whether to include only contacts with an email address."),
+  hasValidLinkedIn: z.boolean().optional().describe("Whether to include only contacts with a valid LinkedIn URL."),
 });
 
 const confirmEnrollmentPreflightSchema = z
   .object({
-    workspaceId: z.string().describe("Workspace ID"),
-    sequenceId: z.string().describe("Target sequence ID"),
-    preflightId: z.string().describe("Preflight ID returned by preflight_enrollments"),
+    workspaceId: z.string().describe("Workspace ID."),
+    sequenceId: z.string().describe("Target sequence ID."),
+    preflightId: z.string().describe("Enrollment preflight ID."),
     action: z
       .enum(["skip", "move"])
-      .describe("skip ignores all contacts requiring a decision; move resolves covered source conflicts"),
+      .describe("Conflict resolution action. skip excludes conflicts; move resolves selected source conflicts."),
     moveSourceSequenceIds: z
       .array(z.number().int().positive())
       .optional()
       .describe(
-        "Used only for action=move; a contact is skipped unless every source sequence requiring cleanup for that contact is selected",
+        "Source sequence IDs to clean up for a move action. A contact is skipped unless all of its required sources are selected.",
       ),
     skipReplied: z
       .boolean()
       .optional()
       .describe(
-        "Required for action=move: true leaves previously replied contacts unenrolled; false explicitly allows their enrollment. Omit for action=skip.",
+        "Whether to skip contacts that previously replied. Required for move actions and omitted for skip actions.",
       ),
   })
   .superRefine(({ action, skipReplied }, ctx) => {
@@ -62,12 +87,12 @@ export function registerEnrollmentTools(server: McpServer, client: SalesforgeCli
     {
       title: "Enroll Contacts (Deprecated)",
       description:
-        "DEPRECATED: Use preflight_enrollments followed by confirm_enrollment_preflight. This legacy tool immediately enrolls matching contacts without exposing the preflight conflict and replied-contact decisions.",
+        "Deprecated. Enrolls matching contacts immediately without conflict review. Use preflight_enrollments and confirm_enrollment_preflight for new integrations.",
       inputSchema: {
-        workspaceId: z.string().describe("Workspace ID"),
-        sequenceId: z.string().describe("Sequence ID"),
-        filters: enrollmentFiltersSchema.describe("Filters to select contacts for enrollment"),
-        limit: z.number().optional().describe("Max contacts to enroll (default 500)"),
+        workspaceId: z.string().describe("Workspace ID."),
+        sequenceId: z.string().describe("Sequence ID."),
+        filters: enrollmentFiltersSchema.describe("Contact filters."),
+        limit: z.number().int().positive().optional().describe("Maximum number of contacts to enroll."),
       },
     },
     ({ workspaceId, sequenceId, filters, limit }) => {
@@ -81,25 +106,23 @@ export function registerEnrollmentTools(server: McpServer, client: SalesforgeCli
     "preflight_enrollments",
     {
       description:
-        "Create a non-mutating, 15-minute enrollment preflight for matching contacts. Returns a preflightId and expiresAt, decision counts, source-sequence move groups, and the replied-contact count. No contacts are enrolled until confirm_enrollment_preflight applies a skip or move decision.",
+        "Analyzes matching contacts before enrollment and creates a preflight that expires after 15 minutes. Returns candidate totals, conflicts, available source cleanup groups, and replied-contact information. Use confirm_enrollment_preflight to apply a skip or move decision.",
       inputSchema: {
-        workspaceId: z.string().describe("Workspace ID"),
-        sequenceId: z.string().describe("Target sequence ID"),
+        workspaceId: z.string().describe("Workspace ID."),
+        sequenceId: z.string().describe("Target sequence ID."),
         filters: enrollmentFiltersSchema
           .optional()
-          .describe("Contact filters; provide at least one effective filter or a positive limit"),
+          .describe("Contact filters. At least one filter or a limit is required."),
         limit: z
           .number()
           .int()
           .positive()
           .optional()
-          .describe("Maximum candidates after filters and selection scope; may be used without filters"),
+          .describe("Maximum number of candidates after filtering and selection scope."),
         selectionScope: z
           .enum(["all", "not_in_sequence", "in_sequence"])
           .optional()
-          .describe(
-            "Sequence-membership scope: all (default), not_in_sequence (not enrolled in any sequence), or in_sequence (enrolled in at least one sequence); this does not replace the required filter or limit",
-          ),
+          .describe("Sequence membership scope. Defaults to all."),
       },
     },
     ({ workspaceId, sequenceId, filters, limit, selectionScope }) => {
@@ -115,22 +138,20 @@ export function registerEnrollmentTools(server: McpServer, client: SalesforgeCli
     "preview_enrollment_move",
     {
       description:
-        "Recalculate move-mode counts for a saved preflight without changing enrollments. Returns moveModeEnrollCount, moveCleanupContactCount, repliedSkippedCount, and skippedByUncheckedGroupCount. skipReplied must be an explicit choice so the preview matches confirmation. A stale preflight returns 409 preflight_stale with a replacement preflight in the error data; use that replacement instead of retrying the old preflight.",
+        "Calculates the projected outcome of a move decision without changing enrollments. Returns projected enrollment, skip, and source cleanup counts with a skip-reason breakdown. A stale preflight error includes a replacement preflight.",
       inputSchema: {
-        workspaceId: z.string().describe("Workspace ID"),
-        sequenceId: z.string().describe("Target sequence ID"),
-        preflightId: z.string().describe("Preflight ID returned by preflight_enrollments"),
+        workspaceId: z.string().describe("Workspace ID."),
+        sequenceId: z.string().describe("Target sequence ID."),
+        preflightId: z.string().describe("Enrollment preflight ID."),
         moveSourceSequenceIds: z
           .array(z.number().int().positive())
           .optional()
           .describe(
-            "Source sequences selected for cleanup; a contact is skipped unless every source sequence requiring cleanup for that contact is selected",
+            "Source sequence IDs to clean up. A contact is skipped unless all of its required sources are selected.",
           ),
         skipReplied: z
           .boolean()
-          .describe(
-            "Required explicit choice: true excludes contacts with a previous reply; false includes eligible replied contacts",
-          ),
+          .describe("Whether to skip contacts that previously replied."),
       },
     },
     ({ workspaceId, sequenceId, preflightId, moveSourceSequenceIds, skipReplied }) =>
@@ -146,7 +167,7 @@ export function registerEnrollmentTools(server: McpServer, client: SalesforgeCli
     "confirm_enrollment_preflight",
     {
       description:
-        "Apply a saved enrollment preflight if its enrollment state is still current. skip enrolls only candidates that require no conflict decision and performs no source cleanup. move requires an explicit skipReplied choice, enrolls eligible candidates whose cleanup conflicts are covered by moveSourceSequenceIds, and cleans those source enrollments. Headroom is rechecked while confirmations are serialized per account, and cleanup from paused source sequences does not create active-enrollment headroom. Returns enrolled lead IDs and enrolled, skipped, moved, and already-in-target counts. A stale preflight returns 409 preflight_stale with a replacement preflight in the error data; continue with the replacement, not the old ID. A concurrent confirmation returns 423 enrollment_confirmation_busy; retry the same confirmation after the in-progress request finishes. An expired preflight returns 404 and requires a new preflight.",
+        "Applies a skip or move decision to an enrollment preflight. Returns enrolled contact IDs and actual enrollment, skip, source cleanup, and already-in-target counts. Stale preflights include a replacement; expired preflights require a new preflight.",
       inputSchema: confirmEnrollmentPreflightSchema,
     },
     ({ workspaceId, sequenceId, preflightId, action, moveSourceSequenceIds, skipReplied }) =>
@@ -162,19 +183,18 @@ export function registerEnrollmentTools(server: McpServer, client: SalesforgeCli
   server.registerTool(
     "remove_enrollments",
     {
-      description: "Remove contacts from a multichannel sequence",
+      description: "Removes matching contacts from a multichannel sequence. Enrollment preflight is not required.",
       inputSchema: {
-        workspaceId: z.string().describe("Workspace ID"),
-        sequenceId: z.string().describe("Sequence ID"),
-        filters: z
-          .object({
-            leadIds: z.array(z.string()).optional().describe("Lead/contact IDs to remove"),
-            tagIds: z.array(z.string()).optional().describe("Tag IDs to filter"),
-          })
-          .describe("Filters to select contacts for removal"),
+        workspaceId: z.string().describe("Workspace ID."),
+        sequenceId: z.string().describe("Sequence ID."),
+        filters: enrollmentFiltersSchema.describe("Contact filters."),
+        limit: z.number().int().positive().optional().describe("Maximum number of contacts to remove."),
       },
     },
-    ({ workspaceId, sequenceId, filters }) =>
-      handleTool(() => client.mcPost(`${enrollPath(workspaceId, sequenceId)}/remove`, { filters })),
+    ({ workspaceId, sequenceId, filters, limit }) => {
+      const payload: Record<string, unknown> = { filters };
+      if (limit !== undefined) payload.limit = limit;
+      return handleTool(() => client.mcPost(`${enrollPath(workspaceId, sequenceId)}/remove`, payload));
+    },
   );
 }
