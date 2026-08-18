@@ -45,7 +45,6 @@ const enrollmentFiltersSchema = z.object({
     .optional()
     .describe("Email validation statuses to include."),
   excludeContacted: z.boolean().optional().describe("Whether to exclude previously contacted contacts."),
-  deleted: z.boolean().optional().describe("Whether to include soft-deleted contacts."),
   hasEmail: z.boolean().optional().describe("Whether to include only contacts with an email address."),
   hasValidLinkedIn: z.boolean().optional().describe("Whether to include only contacts with a valid LinkedIn URL."),
 });
