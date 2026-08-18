@@ -6,7 +6,7 @@ Built on the [Model Context Protocol](https://modelcontextprotocol.io), works wi
 
 ## Supported Products
 
-**Salesforge** (48 tools) - Workspaces, contacts, sequences, mailboxes, sender profiles, enrollments, webhooks, email validation, do-not-contact lists
+**Salesforge** (61 tools) - Workspaces, contacts, sequences, mailboxes, sender profiles, enrollment preflight and confirmation, webhooks, email validation, do-not-contact lists
 
 **Primeforge** (22 tools) - Workspaces, domains, mailboxes, DNS management, prewarmed mailboxes
 
