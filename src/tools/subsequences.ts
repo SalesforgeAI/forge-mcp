@@ -106,6 +106,56 @@ export function registerSubsequenceTools(server: McpServer, client: SalesforgeCl
   );
 
   server.registerTool(
+    "list_subsequence_parents",
+    {
+      description:
+        "List every active parent-sequence assignment for a multichannel subsequence. Use this read-only tool to verify which parent sequences can trigger the subsequence.",
+      inputSchema: {
+        workspaceId: z.string().describe("Workspace ID"),
+        subsequenceId: z.string().describe("Subsequence ID"),
+      },
+    },
+    ({ workspaceId, subsequenceId }) =>
+      handleTool(() =>
+        client.mcGet(
+          `/multichannel/workspaces/${enc(workspaceId)}/subsequences/${enc(subsequenceId)}/parents`,
+        ),
+      ),
+  );
+
+  server.registerTool(
+    "list_subsequence_members",
+    {
+      description:
+        "List current members of a multichannel subsequence with enrollment and handoff timestamps. Filter by leadId to check whether one contact entered without changing its state.",
+      inputSchema: {
+        workspaceId: z.string().describe("Workspace ID"),
+        subsequenceId: z.string().describe("Subsequence ID"),
+        leadId: z.string().optional().describe("Contact lead ID to look up"),
+        page: z.number().int().positive().optional().describe("Page number (default 1)"),
+        limit: z
+          .number()
+          .int()
+          .min(1)
+          .max(100)
+          .optional()
+          .describe("Page size (default 100, maximum 100)"),
+      },
+    },
+    ({ workspaceId, subsequenceId, leadId, page, limit }) =>
+      handleTool(() =>
+        client.mcGet(
+          `/multichannel/workspaces/${enc(workspaceId)}/subsequences/${enc(subsequenceId)}/members`,
+          {
+            ...(leadId !== undefined && { leadId }),
+            ...(page !== undefined && { page: String(page) }),
+            ...(limit !== undefined && { limit: String(limit) }),
+          },
+        ),
+      ),
+  );
+
+  server.registerTool(
     "list_subsequence_triggers",
     {
       description: "List all label triggers configured for a subsequence",
