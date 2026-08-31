@@ -133,6 +133,18 @@ After setup, try asking your AI assistant:
 - "List my Mailforge domains"
 - "Check if example.com is available on Mailforge"
 
+## Asynchronous Email Validation
+
+Start validation with `start_email_validation`. Before returning HTTP 201, Multichannel resolves and persists candidate membership. `selected` and `skipped.duplicate` are exact, supported counts: a non-empty selection returns `status: pending`, while an empty selection returns `status: failed` with `failureCode: validation_scope_empty`. The legacy `strict` option is omitted and deprecated. Retain the returned `validationJobID` and poll `get_validation_results` with roughly ten-second backoff. Continue until the status is terminal: `completed`, `partially_completed`, or `failed`. Inspect the polling response before enrolling contacts; it is authoritative for validation outcomes, terminal counts are authoritative, and a failed run must not be automatically resubmitted.
+
+For enrollment, use `preflight_enrollments` with the completed or partially completed `validationRunId`, inspect the preflight, then use `confirm_enrollment_preflight`. To restrict candidates, provide non-empty `validationStatuses`; omitted or empty statuses mean no status restriction and all run candidates, including unvalidated contacts, are considered. Durable async runs evaluate non-empty statuses against the requested run's persisted results, while legacy completed runs evaluate them against current Salesforge status. A partial run does not automatically select only its successful subset.
+
+Local HTTP MCP testing still proxies the deployed Multichannel API.
+
+## Rollout Dependency
+
+Internal rollout order is binding: deploy the Multichannel async-validation contract before rolling out Forge MCP. Forge MCP must not reintroduce `strict: false` as a rollout workaround.
+
 ## Project Structure
 
 ```

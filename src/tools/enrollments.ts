@@ -25,7 +25,9 @@ const enrollmentFiltersSchema = z.object({
   validationRunId: z
     .string()
     .optional()
-    .describe("Completed validation run ID. The run must contain at least one contact."),
+    .describe(
+      "Completed or partially completed validation run ID. Omitted or empty validationStatuses means no status restriction and considers all run candidates, including unvalidated contacts. For durable async runs, non-empty validationStatuses use that run's persisted results; legacy completed runs use current Salesforge status. The API returns validation_run_not_completed, validation_run_failed, or validation_run_selection_empty when the run cannot supply contacts.",
+    ),
   validationStatuses: z
     .array(
       z.enum([
@@ -43,7 +45,9 @@ const enrollmentFiltersSchema = z.object({
       ]),
     )
     .optional()
-    .describe("Email validation statuses to include."),
+    .describe(
+      "Email validation statuses to include. Omitted or empty means no status restriction and all run candidates, including unvalidated contacts, are considered. For durable async runs, non-empty statuses are evaluated from that run's persisted results; legacy completed runs evaluate them against current Salesforge status.",
+    ),
   excludeContacted: z.boolean().optional().describe("Whether to exclude contacts that have already been contacted."),
   hasEmail: z.boolean().optional().describe("Whether to require an email address."),
   hasValidLinkedIn: z.boolean().optional().describe("Whether to require a valid LinkedIn URL."),
@@ -90,7 +94,7 @@ export function registerEnrollmentTools(server: McpServer, client: SalesforgeCli
     {
       title: "Enroll Contacts (Deprecated)",
       description:
-        "Deprecated. Enrolls matching contacts immediately without conflict review. Use preflight_enrollments and confirm_enrollment_preflight for new integrations.",
+        "Deprecated. Enrolls matching contacts immediately without conflict review. Omitted or empty validationStatuses means no status restriction and considers all run candidates, including unvalidated contacts. For durable async runs, non-empty statuses use persisted run results; legacy completed runs use current Salesforge status. Validation run errors are validation_run_not_completed, validation_run_failed, or validation_run_selection_empty. Use preflight_enrollments and confirm_enrollment_preflight for new integrations.",
       inputSchema: {
         workspaceId: z.string().describe("Workspace ID."),
         sequenceId: z.string().describe("Sequence ID."),
@@ -109,7 +113,7 @@ export function registerEnrollmentTools(server: McpServer, client: SalesforgeCli
     "preflight_enrollments",
     {
       description:
-        "Checks matching contacts before enrollment and saves a preflight for 15 minutes. Returns enrollment counts, sequences contacts can be moved from, and replied-contact information. A contact can appear in several moveGroups, so do not sum selectedContactCount across groups. Counts can include do-not-contact, unsubscribed, or bounce-shielded contacts: they are enrolled but receive no outreach. Use confirm_enrollment_preflight to apply a skip or move decision.",
+        "Checks matching contacts before enrollment and saves a preflight for 15 minutes. Omitted or empty validationStatuses means no status restriction and considers all run candidates, including unvalidated contacts. For durable async runs, non-empty statuses use persisted run results; legacy completed runs use current Salesforge status. Unavailable validation runs return validation_run_not_completed, validation_run_failed, or validation_run_selection_empty. Returns enrollment counts, sequences contacts can be moved from, and replied-contact information. A contact can appear in several moveGroups, so do not sum selectedContactCount across groups. Counts can include do-not-contact, unsubscribed, or bounce-shielded contacts: they are enrolled but receive no outreach. Use confirm_enrollment_preflight to apply a skip or move decision.",
       inputSchema: {
         workspaceId: z.string().describe("Workspace ID."),
         sequenceId: z.string().describe(targetSequenceIdDescription),
@@ -184,7 +188,8 @@ export function registerEnrollmentTools(server: McpServer, client: SalesforgeCli
   server.registerTool(
     "remove_enrollments",
     {
-      description: "Removes matching contacts from a multichannel sequence. Enrollment preflight is not required.",
+      description:
+        "Removes matching contacts from a multichannel sequence. Omitted or empty validationStatuses means no status restriction and considers all run candidates, including unvalidated contacts. For durable async runs, non-empty statuses use persisted run results; legacy completed runs use current Salesforge status. Enrollment preflight is not required.",
       inputSchema: {
         workspaceId: z.string().describe("Workspace ID."),
         sequenceId: z.string().describe("Sequence ID."),

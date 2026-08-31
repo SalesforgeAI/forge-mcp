@@ -12,6 +12,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "test": "tsx --test test/**/*.test.ts",
     "start": "node dist/index.js",
     "start:http": "node dist/http.js",
     "dev": "tsx src/index.ts",
