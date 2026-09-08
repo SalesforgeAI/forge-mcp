@@ -8,9 +8,13 @@ export function registerPrimeforgeWorkspaceTools(server: McpServer, client: ApiC
     "primeforge_list_workspaces",
     {
       description: "List PrimeForge workspaces",
-      inputSchema: {},
+      inputSchema: {
+        limit: z.number().int().min(1).max(100).optional().describe("Max results per page"),
+        offset: z.number().int().min(0).optional().describe("Offset for pagination"),
+      },
     },
-    () => handleTool(() => client.get("/workspaces")),
+    ({ limit, offset }) =>
+      handleTool(() => client.get("/workspaces", buildQuery({ limit, offset }))),
   );
 
   server.registerTool(

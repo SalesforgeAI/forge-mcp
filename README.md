@@ -8,7 +8,7 @@ Built on the [Model Context Protocol](https://modelcontextprotocol.io), works wi
 
 **Salesforge** (63 tools) - Workspaces, contacts, sequences and subsequences, mailboxes, sender profiles, enrollment preflight and confirmation, webhooks, email validation, do-not-contact lists
 
-**Primeforge** (22 tools) - Workspaces, domains, mailboxes, DNS management, prewarmed mailboxes
+**Primeforge** (23 tools) - Workspaces, domains, mailboxes, DNS management, prewarmed mailboxes, bulk mailbox lookup
 
 **Leadsforge** (12 tools) - Contact search, email/phone/LinkedIn enrichment, lookalike search
 

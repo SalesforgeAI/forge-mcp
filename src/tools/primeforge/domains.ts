@@ -10,10 +10,15 @@ export function registerPrimeforgeDomainTools(server: McpServer, client: ApiClie
       description: "List domains in PrimeForge",
       inputSchema: {
         workspaceId: z.string().optional().describe("Filter by workspace ID"),
+        search: z.string().optional().describe("Search by domain name or ID"),
+        limit: z.number().int().min(1).max(100).optional().describe("Max results per page"),
+        offset: z.number().int().min(0).optional().describe("Offset for pagination"),
       },
     },
-    ({ workspaceId }) =>
-      handleTool(() => client.get("/domains", buildQuery({ workspaceId }))),
+    ({ workspaceId, search, limit, offset }) =>
+      handleTool(() =>
+        client.get("/domains", buildQuery({ workspaceId, search, limit, offset })),
+      ),
   );
 
   server.registerTool(

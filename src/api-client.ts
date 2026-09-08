@@ -16,11 +16,11 @@ export class ApiClient {
     private product: string,
   ) {}
 
-  async get<T>(path: string, query?: Record<string, string>): Promise<T> {
+  async get<T>(path: string, query?: Record<string, string | string[]>): Promise<T> {
     return this.request<T>("GET", path, query);
   }
 
-  async post<T>(path: string, body?: unknown, query?: Record<string, string>): Promise<T> {
+  async post<T>(path: string, body?: unknown, query?: Record<string, string | string[]>): Promise<T> {
     return this.request<T>("POST", path, query, body);
   }
 
@@ -39,14 +39,22 @@ export class ApiClient {
   private async request<T>(
     method: string,
     path: string,
-    query?: Record<string, string>,
+    query?: Record<string, string | string[]>,
     body?: unknown,
   ): Promise<T> {
     let url = `${this.baseUrl}${path}`;
     if (query) {
-      const params = new URLSearchParams(
-        Object.entries(query).filter(([, v]) => v !== undefined && v !== ""),
-      );
+      const params = new URLSearchParams();
+      for (const [key, val] of Object.entries(query)) {
+        if (val === undefined || val === "") continue;
+        if (Array.isArray(val)) {
+          for (const item of val) {
+            if (item !== undefined && item !== "") params.append(key, item);
+          }
+          continue;
+        }
+        params.set(key, val);
+      }
       const qs = params.toString();
       if (qs) url += `?${qs}`;
     }
