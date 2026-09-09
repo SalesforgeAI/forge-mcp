@@ -51,18 +51,17 @@ export function registerThreadTools(server: McpServer, client: SalesforgeClient)
     "get_thread",
     {
       description:
-        "Get full thread details including all emails in the conversation, sequence context, and contact information. " +
+        "Get full thread details including email and LinkedIn messages, sequence context, and contact information. " +
         "Use this after list_primebox_threads to get the complete thread before drafting a reply.",
       inputSchema: {
         workspaceId: z.string().describe("Workspace ID"),
-        mailboxId: z.string().describe("Mailbox ID (from list_primebox_threads response)"),
         threadId: z.string().describe("Thread ID (from list_primebox_threads response)"),
       },
     },
-    ({ workspaceId, mailboxId, threadId }) =>
+    ({ workspaceId, threadId }) =>
       handleTool(() =>
         client.coreGet(
-          `/workspaces/${enc(workspaceId)}/mailboxes/${enc(mailboxId)}/threads/${enc(threadId)}`,
+          `/workspaces/${enc(workspaceId)}/threads/${enc(threadId)}`,
         ),
       ),
   );
@@ -97,15 +96,14 @@ export function registerThreadTools(server: McpServer, client: SalesforgeClient)
         "or to reclassify a thread's sentiment. Get available label IDs from list_primebox_labels.",
       inputSchema: {
         workspaceId: z.string().describe("Workspace ID"),
-        mailboxId: z.string().describe("Mailbox ID"),
         threadId: z.string().describe("Thread ID"),
         labelId: z.string().describe("New label ID to assign"),
       },
     },
-    ({ workspaceId, mailboxId, threadId, labelId }) =>
+    ({ workspaceId, threadId, labelId }) =>
       handleTool(() =>
         client.corePut(
-          `/workspaces/${enc(workspaceId)}/mailboxes/${enc(mailboxId)}/threads/${enc(threadId)}/label`,
+          `/workspaces/${enc(workspaceId)}/threads/${enc(threadId)}/label`,
           { labelId },
         ),
       ),
