@@ -178,6 +178,8 @@ npm run start:http
 
 The server listens on port 3000 by default. API keys are passed as headers per request, not as environment variables.
 
+The HTTP endpoint uses stateless MCP POST requests. Standalone SSE streams are not offered: `GET /mcp` (and `HEAD`) returns `405 Method Not Allowed` before allocating an MCP server. Per-request servers and transports are closed after handling, on failures, and when clients disconnect before the response finishes.
+
 ### Diagnostic logging
 
 Logging is enabled by default as JSON lines on **stderr**, suitable for container log collection. MCP stdio output remains reserved for protocol messages. HTTP requests, including `/health`, receive a generated `X-Request-Id` response header that correlates their request and upstream API logs.
