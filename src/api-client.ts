@@ -1,3 +1,5 @@
+import { loggedFetch } from "./logging.js";
+
 export class ApiError extends Error {
   constructor(
     public statusCode: number,
@@ -64,19 +66,19 @@ export class ApiClient {
       init.body = JSON.stringify(body);
     }
 
-    const resp = await fetch(url, init);
+    return loggedFetch(this.product, url, init, async (resp) => {
+      if (!resp.ok) {
+        const text = await resp.text();
+        throw new ApiError(resp.status, text, this.product);
+      }
 
-    if (!resp.ok) {
+      // 204 No Content has no body; 202 Accepted may omit one too
       const text = await resp.text();
-      throw new ApiError(resp.status, text, this.product);
-    }
+      if (!text) {
+        return {} as T;
+      }
 
-    // 204 No Content has no body; 202 Accepted may omit one too
-    const text = await resp.text();
-    if (!text) {
-      return {} as T;
-    }
-
-    return JSON.parse(text) as T;
+      return JSON.parse(text) as T;
+    });
   }
 }

@@ -178,6 +178,25 @@ npm run start:http
 
 The server listens on port 3000 by default. API keys are passed as headers per request, not as environment variables.
 
+### Diagnostic logging
+
+Logging is enabled by default as JSON lines on **stderr**, suitable for container log collection. MCP stdio output remains reserved for protocol messages. HTTP requests, including `/health`, receive a generated `X-Request-Id` response header that correlates their request and upstream API logs.
+
+| Environment variable | Default | Purpose |
+|---|---|---|
+| `LOG_LEVEL` | `info` | Minimum severity: `debug`, `info`, `warn`, or `error`. Debug adds MCP setup timings and upstream response-header timings. |
+| `SLOW_REQUEST_MS` | `3000` | Emit one warning when an HTTP or upstream request remains pending this long. Does not cancel requests or change timeouts. |
+| `RUNTIME_LOG_INTERVAL_MS` | `10000` | Interval for HTTP process metrics: active requests, event-loop delay/utilization, CPU, and memory. |
+
+For more detail, run `LOG_LEVEL=debug npm run start:http`. Invalid settings fall back to their defaults. Keep `info` or `debug` enabled during timeout investigations so request starts and process metrics are retained.
+
+- `http.request.started` without a matching `completed` or `aborted` event indicates an unfinished request or a process that stopped before logging completion. `http.request.slow` is emitted while the request is still pending, including during body parsing.
+- `upstream.request.slow` identifies a pending product API call; its timing includes reading and parsing the response. The parent `requestId` links it to the HTTP request, and `upstreamRequestId` separates multiple API calls.
+- `runtime.metrics` shows whether event-loop delay, CPU, memory, or request counts increased around a timeout. A blocked event loop also delays logging; its stall becomes visible after it resumes.
+- If a timed-out health check has no corresponding request-start event, check proxy/load-balancer logs and container restarts too. Requests may not have reached Express, or the process may have been unable to run. Logging alone cannot establish the root cause.
+
+The structured logs omit headers, bodies, query strings, upstream paths, and error messages/stacks to avoid capturing API keys and customer data. Errors include type, code, and HTTP status where available. Existing Node/Express native diagnostics may still appear separately. HTTP routes other than `/health` and `/mcp` are labeled `other`.
+
 ## License
 
 MIT
