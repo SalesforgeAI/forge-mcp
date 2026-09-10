@@ -6,7 +6,7 @@ Built on the [Model Context Protocol](https://modelcontextprotocol.io), works wi
 
 ## Supported Products
 
-**Salesforge** (63 tools) - Workspaces, contacts, sequences and subsequences, mailboxes, sender profiles, enrollment preflight and confirmation, webhooks, email validation, do-not-contact lists
+**Salesforge** (75 tools) - Workspaces, contacts, sequences and subsequences, mailboxes, LinkedIn accounts, sender profiles, tags, enrollment preflight and confirmation, webhooks, email validation, do-not-contact lists
 
 **Primeforge** (22 tools) - Workspaces, domains, mailboxes, DNS management, prewarmed mailboxes
 
@@ -153,6 +153,8 @@ src/
     ├── nodes.ts          # sequence node management
     ├── branches.ts       # sequence branches
     ├── enrollments.ts    # contact enrollment
+    ├── linkedin.ts       # LinkedIn connection and session management
+    ├── tags.ts           # workspace tag discovery
     ├── sender-profiles.ts# sender profile management
     ├── validations.ts    # email validation
     ├── webhooks.ts       # webhook management
@@ -202,3 +204,22 @@ The structured logs omit headers, bodies, query strings, upstream paths, and err
 ## License
 
 MIT
+
+## Salesforge account and contact management
+
+These tools use the public API additions from SF-10349 and its base branch. The matching API changes must be deployed before the tools can be used.
+
+| Tools | Behavior |
+| --- | --- |
+| `create_sender_profile`, `bulk_create_sender_profiles` | Create profiles with optional existing mailbox IDs and a LinkedIn account ID. Bulk creation accepts 1–100 entries and reports each result independently. |
+| `connect_linkedin_account` | Connect LinkedIn; set `skipSenderProfile: true` to skip automatic draft sender-profile creation. |
+| `get_linkedin_account`, `submit_linkedin_account_otp` | Check connection state and answer authentication challenges. |
+| `disconnect_linkedin_account`, `reconnect_linkedin_account` | Manage the session while retaining account identity, history, limits, and the sender-profile association. |
+| `delete_mailbox` | Remove the mailbox from Salesforge without deleting the email account at its provider. |
+| `update_mailbox_connection_settings` | Update SMTP/IMAP settings even while connected. Supply complete `host`, `port`, `username`, and `password` settings for at least one protocol. Omitted protocols remain unchanged. OAuth mailboxes are unsupported. |
+| `delete_contact`, `bulk_delete_contacts` | Delete one contact or up to 1,000 contacts. Bulk deletion ignores IDs outside the workspace. |
+| `list_tags` | Discover tag IDs and names with pagination, name search, and optional case sensitivity. |
+
+To attach a standalone LinkedIn account, use `create_sender_profile` or `update_sender_profile` with its `linkedinAccountId` (inside `updates` for the update tool). An existing profile must have no LinkedIn account, or already have that same account. Replacing a different account returns 409. Omitted/null `linkedinAccountId` leaves the association unchanged; omitted `mailboxIds` preserves mailboxes.
+
+There is no independent LinkedIn deletion tool or email disconnect tool. The existing `delete_sender_profile` tool also deletes its attached LinkedIn account.
