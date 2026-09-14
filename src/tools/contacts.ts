@@ -134,4 +134,19 @@ export function registerContactTools(server: McpServer, client: SalesforgeClient
     ({ workspaceId, contactId }) =>
       handleTool(() => client.coreGet(`/workspaces/${enc(workspaceId)}/contacts/${enc(contactId)}`)),
   );
+  server.registerTool("delete_contact", {
+    description: "Delete a contact from the workspace.",
+    inputSchema: { workspaceId: z.string().min(1), contactId: z.string().min(1) },
+  }, ({ workspaceId, contactId }) =>
+    handleTool(() => client.coreDelete(`/workspaces/${enc(workspaceId)}/contacts/${enc(contactId)}`)));
+
+  server.registerTool("bulk_delete_contacts", {
+    description: "Delete 1–1000 contacts. IDs outside the workspace are ignored.",
+    inputSchema: {
+      workspaceId: z.string().min(1),
+      contactIds: z.array(z.string().min(1)).min(1).max(1000),
+    },
+  }, ({ workspaceId, contactIds }) =>
+    handleTool(() => client.corePost(`/workspaces/${enc(workspaceId)}/contacts/bulk-delete`, { contactIds })));
+
 }

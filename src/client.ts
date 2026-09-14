@@ -34,6 +34,11 @@ export class SalesforgeClient {
     return this.request<T>("POST", CORE_BASE_URL, path, undefined, body);
   }
 
+  /** Delete a core Salesforge resource. */
+  async coreDelete<T>(path: string): Promise<T> {
+    return this.request<T>("DELETE", CORE_BASE_URL, path);
+  }
+
   async corePut<T>(path: string, body?: unknown): Promise<T> {
     return this.request<T>("PUT", CORE_BASE_URL, path, undefined, body);
   }

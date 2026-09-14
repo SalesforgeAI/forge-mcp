@@ -6,7 +6,7 @@ Built on the [Model Context Protocol](https://modelcontextprotocol.io), works wi
 
 ## Supported Products
 
-**Salesforge** (63 tools) - Workspaces, contacts, sequences and subsequences, mailboxes, sender profiles, enrollment preflight and confirmation, webhooks, email validation, do-not-contact lists
+**Salesforge** (71 tools) - Workspaces, contacts, sequences and subsequences, mailboxes, LinkedIn accounts, sender profiles, tags, enrollment preflight and confirmation, webhooks, email validation, do-not-contact lists
 
 **Primeforge** (22 tools) - Workspaces, domains, mailboxes, DNS management, prewarmed mailboxes
 
@@ -153,6 +153,8 @@ src/
     ├── nodes.ts          # sequence node management
     ├── branches.ts       # sequence branches
     ├── enrollments.ts    # contact enrollment
+    ├── linkedin.ts       # LinkedIn connection and authentication
+    ├── tags.ts           # workspace tag discovery
     ├── sender-profiles.ts# sender profile management
     ├── validations.ts    # email validation
     ├── webhooks.ts       # webhook management
@@ -202,3 +204,19 @@ The structured logs omit headers, bodies, query strings, upstream paths, and err
 ## License
 
 MIT
+
+## Salesforge account and contact management
+
+These tools require the public API additions in [multichannel-api #1068](https://github.com/SalesforgeAI/multichannel-api/pull/1068) and [salesforge-api #2795](https://github.com/SalesforgeAI/salesforge-api/pull/2795) (SF-9461). The matching API changes must be deployed before the tools can be used.
+
+| Tools | Behavior |
+| --- | --- |
+| `create_sender_profile`, `bulk_create_sender_profiles` | Create profiles with optional existing mailbox IDs and a LinkedIn account ID. Bulk creation accepts 1–100 entries and reports each result independently. |
+| `connect_linkedin_account` | Connect LinkedIn; set `skipSenderProfile: true` to skip automatic draft sender-profile creation. |
+| `get_linkedin_account`, `submit_linkedin_account_otp` | Check connection state and answer authentication challenges. |
+| `delete_contact`, `bulk_delete_contacts` | Delete one contact or up to 1,000 contacts. Bulk deletion ignores IDs outside the workspace. |
+| `list_tags` | Discover tag IDs and names with pagination, name search, and optional case sensitivity. |
+
+To attach a standalone LinkedIn account, use `create_sender_profile` with its `linkedinAccountId`. The account must belong to the workspace and must not already be attached to another sender profile.
+
+The existing `delete_sender_profile` tool also deletes its attached LinkedIn account.
