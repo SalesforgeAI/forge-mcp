@@ -13,6 +13,22 @@ function seqProfilesPath(workspaceId: string, sequenceId: string) {
 }
 
 export function registerSenderProfileTools(server: McpServer, client: SalesforgeClient) {
+  const profile = z.object({
+    name: z.string().min(1),
+    mailboxIds: z.array(z.string()).optional().describe("Existing mailbox IDs in this workspace"),
+    linkedinAccountId: z.number().int().positive().optional().describe("Existing LinkedIn account ID in this workspace, not already attached to a profile"),
+  });
+  server.registerTool("create_sender_profile", {
+    description: "Create a sender profile, optionally attaching existing mailboxes and/or a LinkedIn account connected with skipSenderProfile=true.",
+    inputSchema: { workspaceId: z.string().min(1), ...profile.shape },
+  }, ({ workspaceId, ...body }) => handleTool(() => client.mcPost(profilesPath(workspaceId), body)));
+
+  server.registerTool("bulk_create_sender_profiles", {
+    description: "Create 1–100 sender profiles. Entries are processed independently; inspect each result for success or failure.",
+    inputSchema: { workspaceId: z.string().min(1), profiles: z.array(profile).min(1).max(100) },
+  }, ({ workspaceId, profiles }) =>
+    handleTool(() => client.mcPost(`${profilesPath(workspaceId)}/bulk`, { profiles })));
+
   server.registerTool(
     "list_sender_profiles",
     {
@@ -39,7 +55,7 @@ export function registerSenderProfileTools(server: McpServer, client: Salesforge
   server.registerTool(
     "delete_sender_profile",
     {
-      description: "Delete a sender profile",
+      description: "Delete a sender profile and its attached LinkedIn account, if any.",
       inputSchema: {
         workspaceId: z.string().describe("Workspace ID"),
         senderProfileId: z.string().describe("Sender profile ID"),
