@@ -41,11 +41,15 @@ export function registerSenderProfileTools(server: McpServer, client: Salesforge
   server.registerTool(
     "update_sender_profile",
     {
-      description: "Update a sender profile",
+      description: "Update a sender profile name or mailboxIds, or attach an existing LinkedIn account to an unlinked profile. Repeating the same account ID is allowed; replacing another account is rejected. Omitted fields remain unchanged.",
       inputSchema: {
         workspaceId: z.string().describe("Workspace ID"),
         senderProfileId: z.string().describe("Sender profile ID"),
-        updates: z.record(z.string(), z.any()).describe("Fields to update"),
+        updates: z.object({
+          name: z.string().optional(),
+          mailboxIds: z.array(z.string()).optional().describe("Omit to preserve mailboxes; use [] to clear"),
+          linkedinAccountId: z.number().int().positive().nullable().optional().describe("Existing unassigned account in this workspace; omitted or null leaves the association unchanged"),
+        }).strict().describe("Fields to update"),
       },
     },
     ({ workspaceId, senderProfileId, updates }) =>
