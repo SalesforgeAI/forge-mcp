@@ -6,7 +6,7 @@ Built on the [Model Context Protocol](https://modelcontextprotocol.io), works wi
 
 ## Supported Products
 
-**Salesforge** (75 tools) - Workspaces, contacts, sequences and subsequences, mailboxes, LinkedIn accounts, sender profiles, tags, enrollment preflight and confirmation, webhooks, email validation, do-not-contact lists
+**Salesforge** (76 tools) - Workspaces, contacts, sequences and subsequences, lead progress, mailboxes, LinkedIn accounts, sender profiles, tags, enrollment preflight and confirmation, webhooks, email validation, do-not-contact lists
 
 **Primeforge** (22 tools) - Workspaces, domains, mailboxes, DNS management, prewarmed mailboxes
 
@@ -123,6 +123,7 @@ After setup, try asking your AI assistant:
 - "List my Salesforge workspaces"
 - "Show contacts tagged with 'enterprise' in workspace X"
 - "Create a new sequence called 'Q2 Outreach'"
+- "List leads in sequence 31086 and show the actions and conditions executed for a lead"
 - "Show the parent sequences and enrolled contacts for subsequence 31086"
 - "Enroll these contacts into the sequence"
 - "Show my Primeforge domains"
@@ -148,7 +149,7 @@ src/
     ├── workspaces.ts     # workspace management
     ├── contacts.ts       # contact CRUD
     ├── mailboxes.ts      # mailbox and email operations
-    ├── sequences.ts      # sequence lifecycle
+    ├── sequences.ts      # sequence lifecycle and lead progress
     ├── subsequences.ts   # subsequence triggers, parents, and members
     ├── nodes.ts          # sequence node management
     ├── branches.ts       # sequence branches
