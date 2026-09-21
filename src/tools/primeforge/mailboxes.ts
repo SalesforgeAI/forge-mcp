@@ -10,10 +10,40 @@ export function registerPrimeforgeMailboxTools(server: McpServer, client: ApiCli
       description: "List PrimeForge mailboxes",
       inputSchema: {
         workspaceId: z.string().optional().describe("Filter by workspace ID"),
+        domainId: z.string().optional().describe("Filter by domain ID"),
+        email: z.string().optional().describe("Filter by mailbox email"),
+        limit: z.number().int().min(1).max(100).optional().describe("Max results per page"),
+        offset: z.number().int().min(0).optional().describe("Offset for pagination"),
       },
     },
-    ({ workspaceId }) =>
-      handleTool(() => client.get("/mailboxes", buildQuery({ workspaceId }))),
+    ({ workspaceId, domainId, email, limit, offset }) =>
+      handleTool(() =>
+        client.get("/mailboxes", buildQuery({ workspaceId, domainId, email, limit, offset })),
+      ),
+  );
+
+  server.registerTool(
+    "primeforge_get_mailboxes_by_ids",
+    {
+      description: "Get PrimeForge mailboxes by IDs",
+      inputSchema: {
+        mailboxIds: z.array(z.string().min(1)).min(1).max(100).describe("Mailbox IDs"),
+      },
+    },
+    ({ mailboxIds }) =>
+      handleTool(() => client.post("/mailboxes/get-by-ids", { mailboxIds })),
+  );
+
+  server.registerTool(
+    "primeforge_get_mailboxes_by_addresses",
+    {
+      description: "Get PrimeForge mailboxes by email addresses",
+      inputSchema: {
+        addresses: z.array(z.string().min(1)).min(1).max(100).describe("Mailbox email addresses"),
+      },
+    },
+    ({ addresses }) =>
+      handleTool(() => client.post("/mailboxes/get-by-addresses", { addresses })),
   );
 
   server.registerTool(
