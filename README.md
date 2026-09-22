@@ -6,9 +6,9 @@ Built on the [Model Context Protocol](https://modelcontextprotocol.io), works wi
 
 ## Supported Products
 
-**Salesforge** (65 tools) - Account credits and subscription, workspaces, contacts, sequences and subsequences, mailboxes, sender profiles, enrollment preflight and confirmation, webhooks, email validation, do-not-contact lists
+**Salesforge** (77 tools) - Account credits and subscription, workspaces, contacts, sequences and subsequences, mailboxes, LinkedIn accounts, sender profiles, tags, enrollment preflight and confirmation, webhooks, email validation, do-not-contact lists
 
-**Primeforge** (22 tools) - Workspaces, domains, mailboxes, DNS management, prewarmed mailboxes
+**Primeforge** (23 tools) - Workspaces, domains, mailboxes, DNS management, prewarmed mailboxes, bulk mailbox lookup
 
 **Leadsforge** (12 tools) - Contact search, email/phone/LinkedIn enrichment, lookalike search
 
@@ -154,6 +154,8 @@ src/
     ├── nodes.ts          # sequence node management
     ├── branches.ts       # sequence branches
     ├── enrollments.ts    # contact enrollment
+    ├── linkedin.ts       # LinkedIn connection and session management
+    ├── tags.ts           # workspace tag discovery
     ├── sender-profiles.ts# sender profile management
     ├── validations.ts    # email validation
     ├── webhooks.ts       # webhook management
@@ -179,6 +181,8 @@ npm run start:http
 
 The server listens on port 3000 by default. API keys are passed as headers per request, not as environment variables.
 
+The HTTP endpoint uses stateless MCP POST requests. Standalone SSE streams are not offered: `GET /mcp` (and `HEAD`) returns `405 Method Not Allowed` before allocating an MCP server. Per-request servers and transports are closed after handling, on failures, and when clients disconnect before the response finishes.
+
 ### Diagnostic logging
 
 Logging is enabled by default as JSON lines on **stderr**, suitable for container log collection. MCP stdio output remains reserved for protocol messages. HTTP requests, including `/health`, receive a generated `X-Request-Id` response header that correlates their request and upstream API logs.
@@ -201,3 +205,32 @@ The structured logs omit headers, bodies, query strings, upstream paths, and err
 ## License
 
 MIT
+
+## Salesforge account and contact management
+
+These tools require the public API additions in [multichannel-api #1068](https://github.com/SalesforgeAI/multichannel-api/pull/1068) and [salesforge-api #2795](https://github.com/SalesforgeAI/salesforge-api/pull/2795) (SF-9461). The matching API changes must be deployed before the tools can be used.
+
+| Tools | Behavior |
+| --- | --- |
+| `create_sender_profile`, `bulk_create_sender_profiles` | Create profiles with optional existing mailbox IDs and a LinkedIn account ID. Bulk creation accepts 1–100 entries and reports each result independently. |
+| `connect_linkedin_account` | Connect LinkedIn; set `skipSenderProfile: true` to skip automatic draft sender-profile creation. |
+| `get_linkedin_account`, `submit_linkedin_account_otp` | Check connection state and answer authentication challenges. |
+| `delete_contact`, `bulk_delete_contacts` | Delete one contact or up to 1,000 contacts. Bulk deletion ignores IDs outside the workspace. |
+| `list_tags` | Discover tag IDs and names with pagination, name search, and optional case sensitivity. |
+
+To attach a standalone LinkedIn account, use `create_sender_profile` with its `linkedinAccountId`. The account must belong to the workspace and must not already be attached to another sender profile.
+
+The existing `delete_sender_profile` tool also deletes its attached LinkedIn account.
+
+## Salesforge mailbox and LinkedIn lifecycle
+
+These tools require [salesforge-api #2836](https://github.com/SalesforgeAI/salesforge-api/pull/2836) and [multichannel-api #1111](https://github.com/SalesforgeAI/multichannel-api/pull/1111) (SF-10349), on top of the SF-9461 API additions above. The matching API changes must be deployed before the tools can be used.
+
+| Tools | Behavior |
+| --- | --- |
+| `disconnect_linkedin_account`, `reconnect_linkedin_account` | Manage the session while retaining account identity, history, limits, and the sender-profile association. |
+| `delete_mailbox` | Remove the mailbox from Salesforge without deleting the email account at its provider. |
+| `update_mailbox_connection_settings` | Update SMTP/IMAP settings even while connected. Supply complete `host`, `port`, `username`, and `password` settings for at least one protocol. Omitted protocols remain unchanged. OAuth mailboxes are unsupported. |
+| `update_sender_profile` | Attach a standalone LinkedIn account using `updates.linkedinAccountId`. The profile must have no LinkedIn account, or already have that same account. Replacing a different account returns 409. Omitted/null `linkedinAccountId` leaves the association unchanged; omitted `mailboxIds` preserves mailboxes. |
+
+There is no independent LinkedIn deletion tool or email disconnect tool. The existing `delete_sender_profile` tool also deletes its attached LinkedIn account.

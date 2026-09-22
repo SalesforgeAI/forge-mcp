@@ -17,7 +17,7 @@ app.get("/health", (_req, res) => {
 
 app.use("/mcp", (_req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "POST, DELETE, OPTIONS");
   res.setHeader("Access-Control-Expose-Headers", "X-Request-Id");
   res.setHeader(
     "Access-Control-Allow-Headers",
@@ -28,6 +28,12 @@ app.use("/mcp", (_req, res, next) => {
     return;
   }
   next();
+});
+
+// This stateless server does not send notifications on standalone SSE streams.
+app.get("/mcp", (_req, res) => {
+  res.setHeader("Allow", "POST, DELETE, OPTIONS");
+  res.status(405).end();
 });
 
 app.all("/mcp", async (req, res) => {
@@ -57,31 +63,60 @@ app.all("/mcp", async (req, res) => {
 
   let stage = "create_server";
   const started = performance.now();
+  let server: ReturnType<typeof createServer> | undefined;
+  let transport: StreamableHTTPServerTransport | undefined;
+  let cleanupPromise: Promise<void> | undefined;
+
+  /** Close both resources once, including when disconnect and finally overlap. */
+  const cleanup = (): Promise<void> => {
+    cleanupPromise ??= Promise.resolve().then(async () => {
+      try {
+        await transport?.close();
+      } catch (error) {
+        log("error", "mcp.cleanup.failed", { resource: "transport", ...errorFields(error) });
+      }
+      try {
+        await server?.close();
+      } catch (error) {
+        log("error", "mcp.cleanup.failed", { resource: "server", ...errorFields(error) });
+      }
+    });
+    return cleanupPromise;
+  };
+
+  /** Release resources immediately when the client leaves before the response finishes. */
+  const onClose = (): void => {
+    if (!res.writableFinished) void cleanup();
+  };
+  res.once("close", onClose);
   try {
-    const server = createServer(clients);
+    if (res.destroyed) return;
+    server = createServer(clients);
     log("debug", "mcp.server.created", { durationMs: Math.round(performance.now() - started), products: Object.keys(clients) });
-    const transport = new StreamableHTTPServerTransport({ enableJsonResponse: true });
+    transport = new StreamableHTTPServerTransport({ enableJsonResponse: true });
 
     stage = "connect";
     await server.connect(transport);
+    if (res.destroyed) return;
     log("debug", "mcp.transport.connected", { durationMs: Math.round(performance.now() - started) });
     stage = "handle_request";
     await transport.handleRequest(req, res, req.body);
-    stage = "close_transport";
-    await transport.close();
-    stage = "close_server";
-    await server.close();
     log("info", "mcp.request.completed", { durationMs: Math.round(performance.now() - started) });
   } catch (e: unknown) {
     log("error", "mcp.request.failed", { stage, ...errorFields(e), headersSent: res.headersSent, durationMs: Math.round(performance.now() - started) });
-    if (!res.headersSent) {
+    if (!res.headersSent && !res.destroyed) {
       const msg = e instanceof Error ? e.message : String(e);
       res.status(500).json({
         jsonrpc: "2.0",
         error: { code: -32603, message: msg },
         id: null,
       });
+    } else if (!res.writableEnded && !res.destroyed) {
+      res.destroy();
     }
+  } finally {
+    await cleanup();
+    res.off("close", onClose);
   }
 });
 
