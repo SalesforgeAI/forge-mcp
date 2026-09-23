@@ -6,9 +6,9 @@ Built on the [Model Context Protocol](https://modelcontextprotocol.io), works wi
 
 ## Supported Products
 
-**Salesforge** (76 tools) - Workspaces, contacts, sequences and subsequences, lead progress, mailboxes, LinkedIn accounts, sender profiles, tags, enrollment preflight and confirmation, webhooks, email validation, do-not-contact lists
+**Salesforge** (78 tools) - Account credits and subscription, workspaces, contacts, sequences and subsequences, lead progress, mailboxes, LinkedIn accounts, sender profiles, tags, enrollment preflight and confirmation, webhooks, email validation, do-not-contact lists
 
-**Primeforge** (22 tools) - Workspaces, domains, mailboxes, DNS management, prewarmed mailboxes
+**Primeforge** (23 tools) - Workspaces, domains, mailboxes, DNS management, prewarmed mailboxes, bulk mailbox lookup
 
 **Leadsforge** (12 tools) - Contact search, email/phone/LinkedIn enrichment, lookalike search
 
@@ -146,6 +146,7 @@ src/
 ├── helpers.ts            # shared utilities
 └── tools/
     ├── identity.ts       # API key validation
+    ├── account.ts        # account credit balances and subscription
     ├── workspaces.ts     # workspace management
     ├── contacts.ts       # contact CRUD
     ├── mailboxes.ts      # mailbox and email operations
