@@ -1,3 +1,5 @@
+import { loggedFetch } from "./logging.js";
+
 const CORE_BASE_URL = "https://api.salesforge.ai/public/v2";
 const MULTICHANNEL_BASE_URL = "https://multichannel-api.salesforge.ai/public";
 
@@ -32,6 +34,16 @@ export class SalesforgeClient {
     return this.request<T>("POST", CORE_BASE_URL, path, undefined, body);
   }
 
+  /** Patch fields on a core Salesforge resource. */
+  async corePatch<T>(path: string, body?: unknown): Promise<T> {
+    return this.request<T>("PATCH", CORE_BASE_URL, path, undefined, body);
+  }
+
+  /** Delete a core Salesforge resource. */
+  async coreDelete<T>(path: string): Promise<T> {
+    return this.request<T>("DELETE", CORE_BASE_URL, path);
+  }
+
   async corePut<T>(path: string, body?: unknown): Promise<T> {
     return this.request<T>("PUT", CORE_BASE_URL, path, undefined, body);
   }
@@ -58,19 +70,20 @@ export class SalesforgeClient {
 
   async coreGetRaw(path: string): Promise<{ contentType: string; data: string }> {
     const url = `${CORE_BASE_URL}${path}`;
-    const resp = await fetch(url, {
+    return loggedFetch("Salesforge", url, {
       method: "GET",
       headers: { Authorization: this.apiKey, "X-Source": "forge-mcp" },
+    }, async (resp) => {
+      if (!resp.ok) {
+        const body = await resp.text();
+        throw new SalesforgeApiError(resp.status, body);
+      }
+      const buffer = await resp.arrayBuffer();
+      return {
+        contentType: resp.headers.get("content-type") ?? "application/octet-stream",
+        data: Buffer.from(buffer).toString("base64"),
+      };
     });
-    if (!resp.ok) {
-      const body = await resp.text();
-      throw new SalesforgeApiError(resp.status, body);
-    }
-    const buffer = await resp.arrayBuffer();
-    return {
-      contentType: resp.headers.get("content-type") ?? "application/octet-stream",
-      data: Buffer.from(buffer).toString("base64"),
-    };
   }
 
   private async request<T>(
@@ -108,19 +121,19 @@ export class SalesforgeClient {
       init.body = JSON.stringify(body);
     }
 
-    const resp = await fetch(url, init);
+    return loggedFetch("Salesforge", url, init, async (resp) => {
+      if (!resp.ok) {
+        const text = await resp.text();
+        throw new SalesforgeApiError(resp.status, text);
+      }
 
-    if (!resp.ok) {
+      // 204 No Content has no body; 202 Accepted may omit one too
       const text = await resp.text();
-      throw new SalesforgeApiError(resp.status, text);
-    }
+      if (!text) {
+        return {} as T;
+      }
 
-    // 204 No Content has no body; 202 Accepted may omit one too
-    const text = await resp.text();
-    if (!text) {
-      return {} as T;
-    }
-
-    return JSON.parse(text) as T;
+      return JSON.parse(text) as T;
+    });
   }
 }

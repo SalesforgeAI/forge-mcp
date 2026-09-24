@@ -2,7 +2,10 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { SalesforgeClient } from "./client.js";
 import { ApiClient } from "./api-client.js";
 import { registerIdentityTools } from "./tools/identity.js";
+import { registerAccountTools } from "./tools/account.js";
 import { registerWorkspaceTools } from "./tools/workspaces.js";
+import { registerLinkedinTools } from "./tools/linkedin.js";
+import { registerTagTools } from "./tools/tags.js";
 import { registerContactTools } from "./tools/contacts.js";
 import { registerMailboxTools } from "./tools/mailboxes.js";
 import { registerDncTools } from "./tools/dnc.js";
@@ -52,8 +55,11 @@ export function createServer(clients: ProductClients): McpServer {
   if (clients.salesforge) {
     const c = clients.salesforge;
     registerIdentityTools(server, c);
+    registerAccountTools(server, c);
     registerWorkspaceTools(server, c);
     registerContactTools(server, c);
+    registerLinkedinTools(server, c);
+    registerTagTools(server, c);
     registerMailboxTools(server, c);
     registerDncTools(server, c);
     registerCustomVarTools(server, c);

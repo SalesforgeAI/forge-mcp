@@ -1,3 +1,5 @@
+import { loggedFetch } from "./logging.js";
+
 export class ApiError extends Error {
   constructor(
     public statusCode: number,
@@ -16,11 +18,11 @@ export class ApiClient {
     private product: string,
   ) {}
 
-  async get<T>(path: string, query?: Record<string, string>): Promise<T> {
+  async get<T>(path: string, query?: Record<string, string | string[]>): Promise<T> {
     return this.request<T>("GET", path, query);
   }
 
-  async post<T>(path: string, body?: unknown, query?: Record<string, string>): Promise<T> {
+  async post<T>(path: string, body?: unknown, query?: Record<string, string | string[]>): Promise<T> {
     return this.request<T>("POST", path, query, body);
   }
 
@@ -39,14 +41,22 @@ export class ApiClient {
   private async request<T>(
     method: string,
     path: string,
-    query?: Record<string, string>,
+    query?: Record<string, string | string[]>,
     body?: unknown,
   ): Promise<T> {
     let url = `${this.baseUrl}${path}`;
     if (query) {
-      const params = new URLSearchParams(
-        Object.entries(query).filter(([, v]) => v !== undefined && v !== ""),
-      );
+      const params = new URLSearchParams();
+      for (const [key, val] of Object.entries(query)) {
+        if (val === undefined || val === "") continue;
+        if (Array.isArray(val)) {
+          for (const item of val) {
+            if (item !== undefined && item !== "") params.append(key, item);
+          }
+          continue;
+        }
+        params.set(key, val);
+      }
       const qs = params.toString();
       if (qs) url += `?${qs}`;
     }
@@ -64,19 +74,19 @@ export class ApiClient {
       init.body = JSON.stringify(body);
     }
 
-    const resp = await fetch(url, init);
+    return loggedFetch(this.product, url, init, async (resp) => {
+      if (!resp.ok) {
+        const text = await resp.text();
+        throw new ApiError(resp.status, text, this.product);
+      }
 
-    if (!resp.ok) {
+      // 204 No Content has no body; 202 Accepted may omit one too
       const text = await resp.text();
-      throw new ApiError(resp.status, text, this.product);
-    }
+      if (!text) {
+        return {} as T;
+      }
 
-    // 204 No Content has no body; 202 Accepted may omit one too
-    const text = await resp.text();
-    if (!text) {
-      return {} as T;
-    }
-
-    return JSON.parse(text) as T;
+      return JSON.parse(text) as T;
+    });
   }
 }

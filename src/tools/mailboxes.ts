@@ -100,4 +100,29 @@ export function registerMailboxTools(server: McpServer, client: SalesforgeClient
         return { status: "accepted", message: "Reply queued for sending" };
       }),
   );
+  server.registerTool("delete_mailbox", {
+    description: "Delete a mailbox connection from Salesforge. Does not delete the email account at its provider.",
+    inputSchema: { workspaceId: z.string().min(1), mailboxId: z.string().min(1) },
+  }, ({ workspaceId, mailboxId }) =>
+    handleTool(() => client.coreDelete(`/workspaces/${enc(workspaceId)}/mailboxes/${enc(mailboxId)}`)));
+
+  const connection = z.object({
+    host: z.string().min(1).describe("Mail server hostname"),
+    port: z.number().int().min(1).max(65535),
+    username: z.string().min(1),
+    password: z.string().min(1).describe("Password or provider-issued app password"),
+  });
+  server.registerTool("update_mailbox_connection_settings", {
+    description: "Update SMTP/IMAP credentials, including while connected. Only supports SMTP/IMAP mailboxes, not OAuth. Supply complete settings for at least one protocol; omitted protocols remain unchanged. Settings are verified before saving.",
+    inputSchema: z.object({
+      workspaceId: z.string().min(1),
+      mailboxId: z.string().min(1),
+      smtp: connection.optional(),
+      imap: connection.optional(),
+    }).refine(({ smtp, imap }) => smtp !== undefined || imap !== undefined, {
+      message: "Provide smtp or imap settings",
+    }),
+  }, ({ workspaceId, mailboxId, ...body }) =>
+    handleTool(() => client.corePatch(`/workspaces/${enc(workspaceId)}/mailboxes/${enc(mailboxId)}/connection-settings`, body)));
+
 }
