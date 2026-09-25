@@ -8,7 +8,7 @@ export function registerThreadTools(server: McpServer, client: SalesforgeClient)
     "list_primebox_threads",
     {
       description:
-        "List primebox threads (email replies) in a workspace. Use 'positive' filter to fetch positive replies. " +
+        "List primebox threads (email and LinkedIn replies) in a workspace. Use 'positive' filter to fetch positive replies. " +
         "Combine with filter='unread' to get unanswered positive replies. " +
         "Returns thread ID, mailbox ID, contact info, subject, snippet, label, and read state for each thread.",
       inputSchema: {
@@ -62,6 +62,36 @@ export function registerThreadTools(server: McpServer, client: SalesforgeClient)
       handleTool(() =>
         client.coreGet(
           `/workspaces/${enc(workspaceId)}/threads/${enc(threadId)}`,
+        ),
+      ),
+  );
+
+  server.registerTool(
+    "reply_to_linkedin_thread",
+    {
+      description:
+        "Send a LinkedIn reply to the contact associated with an existing primebox thread. " +
+        "Use get_thread to read the conversation first and obtain the sending LinkedIn accountId from its LinkedIn messages. " +
+        "Supports LinkedIn-only threads without a mailbox ID. Returns the created LinkedIn message.",
+      inputSchema: z.object({
+        workspaceId: z.string().min(1).describe("Workspace ID"),
+        threadId: z.string().min(1).describe("Thread ID (from list_primebox_threads response)"),
+        accountId: z.number().int().positive().describe("Sending LinkedIn account ID (from get_thread LinkedIn messages)"),
+        message: z.string().describe("Reply text; may be empty when sending attachments only"),
+        attachments: z.array(z.object({
+          filename: z.string().min(1).describe("Attachment filename including extension"),
+          contentType: z.string().optional().describe("Attachment MIME type"),
+          contentBase64: z.string().min(1).describe("Base64-encoded attachment content"),
+        })).optional().describe("Optional LinkedIn attachments; file types and size limits are validated by the API"),
+      }).refine(({ message, attachments }) => message.trim().length > 0 || (attachments?.length ?? 0) > 0, {
+        message: "Provide reply text or at least one attachment",
+      }),
+    },
+    ({ workspaceId, threadId, ...body }) =>
+      handleTool(() =>
+        client.corePost(
+          `/workspaces/${enc(workspaceId)}/threads/${enc(threadId)}/linkedin/reply`,
+          body,
         ),
       ),
   );

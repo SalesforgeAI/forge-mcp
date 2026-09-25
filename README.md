@@ -162,6 +162,7 @@ src/
     ├── workspaces.ts     # workspace management
     ├── contacts.ts       # contact CRUD
     ├── mailboxes.ts      # mailbox and email operations
+    ├── threads.ts        # primebox threads, labels, and LinkedIn replies
     ├── sequences.ts      # sequence lifecycle and lead progress
     ├── subsequences.ts   # subsequence triggers, parents, and members
     ├── nodes.ts          # sequence node management
@@ -218,6 +219,12 @@ The structured logs omit headers, bodies, query strings, upstream paths, and err
 ## License
 
 MIT
+
+## LinkedIn replies
+
+Use `get_thread` to read the conversation, then call `reply_to_linkedin_thread` with `workspaceId`, `threadId`, the sending LinkedIn `accountId` from the thread's LinkedIn messages, and `message`. LinkedIn-only threads do not require a mailbox ID. The tool calls the existing Salesforge public API and returns the created LinkedIn message.
+
+Optional `attachments` accept `filename`, `contentBase64`, and optional `contentType`. For an attachment-only reply, pass an empty `message` and at least one attachment. The API validates supported file types and size limits.
 
 ## Salesforge account and contact management
 
