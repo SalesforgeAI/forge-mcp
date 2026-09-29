@@ -10,7 +10,7 @@ Built on the [Model Context Protocol](https://modelcontextprotocol.io), works wi
 
 **Primeforge** (23 tools) - Workspaces, domains, mailboxes, DNS management, prewarmed mailboxes, bulk mailbox lookup
 
-**Leadsforge** (12 tools) - Contact search, email/phone/LinkedIn enrichment, lookalike search
+**Leadsforge** (41 tools) - Contact search and count, email/phone/LinkedIn enrichment, company followers, lookalike search and free preview, local business discovery and owner enrichment, filter value lookups
 
 **Infraforge** (24 tools) - Workspaces, domains, mailboxes, DNS, domain availability, credits
 
@@ -128,6 +128,9 @@ After setup, try asking your AI assistant:
 - "Enroll these contacts into the sequence"
 - "Show my Primeforge domains"
 - "Search Leadsforge for CTOs at SaaS companies in New York"
+- "Pull the followers of the Salesforge LinkedIn page and find their emails"
+- "Show me companies similar to salesforge.ai before I spend credits"
+- "Find dentists within 10km of Amsterdam and get their owners"
 - "Check my Infraforge credit balance"
 - "Show warmup stats for my mailboxes"
 - "Show which Warmforge mailboxes have 100% latest placement results"
@@ -177,7 +180,7 @@ src/
     ├── custom-vars.ts    # custom variables
     ├── reference.ts      # action/condition type lookups
     ├── primeforge/       # domain, mailbox, workspace tools
-    ├── leadsforge/       # search, enrichment, lookalike tools
+    ├── leadsforge/       # search, enrichment, lookalike, followers, local business tools
     ├── infraforge/       # domain, mailbox, credit tools
     ├── warmforge/        # workspace, mailbox, placement test tools
     └── mailforge/        # workspace, domain, mailbox tools

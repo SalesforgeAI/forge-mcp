@@ -26,6 +26,8 @@ import { registerPrimeforgeMailboxTools } from "./tools/primeforge/mailboxes.js"
 import { registerLeadsforgeSearchTools } from "./tools/leadsforge/search.js";
 import { registerLeadsforgeEnrichmentTools } from "./tools/leadsforge/enrichment.js";
 import { registerLeadsforgeLookalikesTools } from "./tools/leadsforge/lookalikes.js";
+import { registerLeadsforgeFollowersTools } from "./tools/leadsforge/followers.js";
+import { registerLeadsforgeMapsTools } from "./tools/leadsforge/maps.js";
 import { registerInfraforgeWorkspaceTools } from "./tools/infraforge/workspaces.js";
 import { registerInfraforgeDomainTools } from "./tools/infraforge/domains.js";
 import { registerInfraforgeMailboxTools } from "./tools/infraforge/mailboxes.js";
@@ -87,6 +89,8 @@ export function createServer(clients: ProductClients): McpServer {
     registerLeadsforgeSearchTools(server, c);
     registerLeadsforgeEnrichmentTools(server, c);
     registerLeadsforgeLookalikesTools(server, c);
+    registerLeadsforgeFollowersTools(server, c);
+    registerLeadsforgeMapsTools(server, c);
   }
 
   if (clients.infraforge) {
