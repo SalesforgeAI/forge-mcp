@@ -84,6 +84,8 @@ test("leadsforge tools map inputs to the public API contracts", async (t) => {
   const cases = [
     ["leadsforge_count_search_results", { companyDomains: { include: ["salesforge.ai"] }, excludeEmails: ["ada@example.com"] },
       "POST", `${base}/search/count`, {}, { companyDomains: { include: ["salesforge.ai"] }, excludeEmails: ["ada@example.com"] }],
+    ["leadsforge_search", { leadLinkedInURLs: ["https://www.linkedin.com/in/ada"], matchedEntityIDs: { personIDs: ["p1"] }, excludeDomains: ["ibm.com"], leadJobTitles: { include: ["CTO"], exactMatch: true } },
+      "POST", `${base}/search`, {}, { leadLinkedInURLs: ["https://www.linkedin.com/in/ada"], matchedEntityIDs: { personIDs: ["p1"] }, excludeDomains: ["ibm.com"], leadJobTitles: { include: ["CTO"], exactMatch: true } }],
     ["leadsforge_get_search_industry_filters", { search: "software" },
       "GET", `${base}/search/filters/industries`, { search: "software", limit: "100" }],
     ["leadsforge_enrich_email_sync", { linkedinURL: "https://www.linkedin.com/in/ada", externalID: "crm-42" },

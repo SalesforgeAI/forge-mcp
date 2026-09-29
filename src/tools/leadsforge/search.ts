@@ -69,6 +69,14 @@ const searchFilters = {
   companyYearsInBusinessRange: minMax.describe("Years in business range"),
   companyRevenueRanges: z.array(z.string()).optional().describe("Revenue category codes"),
   maxContactsPerCompany: z.number().optional().describe("0-100"),
+  leadLinkedInURLs: z.array(z.string()).optional().describe("Find these exact people by their LinkedIn profile URLs"),
+  matchedEntityIDs: z
+    .object({
+      companyIDs: z.array(z.string()).optional(),
+      personIDs: z.array(z.string()).optional(),
+    })
+    .optional()
+    .describe("Match a contact if its company is in companyIDs OR the contact is in personIDs. With only one side filled it is the same as companyIDs.include or leadIDs.include"),
   excludeEmails: z.array(z.string()).optional().describe("Skip contacts with these email addresses, e.g. people you already own"),
   excludeDomains: z.array(z.string()).optional().describe("Skip contacts at these company domains"),
   excludeLinkedInURLs: z.array(z.string()).optional().describe("Skip contacts with these LinkedIn profile URLs"),
