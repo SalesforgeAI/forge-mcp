@@ -77,13 +77,13 @@ test("leadsforge tools map inputs to the public API contracts", async (t) => {
   const client = await setup(t);
   const calls = [];
   t.mock.method(globalThis, "fetch", async (url, init) => {
-    calls.push({ url: new URL(url), method: init.method, body: init.body && JSON.parse(init.body) });
+    calls.push({ url: new URL(url), method: init.method, body: init.body && JSON.parse(init.body), headers: init.headers });
     return new Response(JSON.stringify({ ok: true }), { status: 200 });
   });
 
   const cases = [
-    ["leadsforge_count_search_results", { companyDomains: { include: ["salesforge.ai"] } },
-      "POST", `${base}/search/count`, {}, { companyDomains: { include: ["salesforge.ai"] } }],
+    ["leadsforge_count_search_results", { companyDomains: { include: ["salesforge.ai"] }, excludeEmails: ["ada@example.com"] },
+      "POST", `${base}/search/count`, {}, { companyDomains: { include: ["salesforge.ai"] }, excludeEmails: ["ada@example.com"] }],
     ["leadsforge_get_search_industry_filters", { search: "software" },
       "GET", `${base}/search/filters/industries`, { search: "software", limit: "100" }],
     ["leadsforge_enrich_email_sync", { linkedinURL: "https://www.linkedin.com/in/ada", externalID: "crm-42" },
@@ -116,4 +116,34 @@ test("leadsforge tools map inputs to the public API contracts", async (t) => {
     assert.deepEqual(Object.fromEntries(call.url.searchParams), query, name);
     assert.deepEqual(call.body, body, name);
   }
+});
+
+test("an idempotency key travels as a header, never in the body", async (t) => {
+  const client = await setup(t);
+  const calls = [];
+  t.mock.method(globalThis, "fetch", async (url, init) => {
+    calls.push({ url: new URL(url), body: JSON.parse(init.body), headers: init.headers });
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  });
+
+  const cases = [
+    ["leadsforge_enrich_emails", { personIDs: ["p1"], idempotencyKey: "key-1" }, `${base}/enrichment/emails`, { personIDs: ["p1"] }],
+    ["leadsforge_search_lookalikes", { domains: ["salesforge.ai"], idempotencyKey: "key-2" }, `${base}/lookalikes/search`, { domains: ["salesforge.ai"], page: 1, pageSize: 25 }],
+    ["leadsforge_search_company_followers", { linkedinUrl: "https://www.linkedin.com/company/salesforge", limit: 10, idempotencyKey: "key-3" }, `${base}/company-followers/search`, { linkedinUrl: "https://www.linkedin.com/company/salesforge", limit: 10 }],
+    ["leadsforge_search_local_businesses", { categories: ["dentist"], lat: 1, lng: 2, radiusKm: 5, limit: 10, idempotencyKey: "key-4" }, `${base}/maps-discovery/search`, { categories: ["dentist"], lat: 1, lng: 2, radiusKm: 5, limit: 10 }],
+    ["leadsforge_enrich_business_owners", { searchJobID: "j1", businessIDs: ["b1"], maxResults: 1, idempotencyKey: "key-5" }, `${base}/maps-discovery/enrich-owners`, { searchJobID: "j1", businessIDs: ["b1"], maxResults: 1 }],
+  ];
+
+  for (const [name, args, url, body] of cases) {
+    const result = await client.callTool({ name, arguments: args });
+    assert.ok(!result.isError, `${name}: ${JSON.stringify(result)}`);
+    const call = calls.at(-1);
+    assert.equal(call.url.href, url, name);
+    assert.deepEqual(call.body, body, name);
+    assert.equal(call.headers["Idempotency-Key"], args.idempotencyKey, name);
+  }
+
+  const without = await client.callTool({ name: "leadsforge_enrich_emails", arguments: { personIDs: ["p1"] } });
+  assert.ok(!without.isError);
+  assert.equal(calls.at(-1).headers["Idempotency-Key"], undefined);
 });

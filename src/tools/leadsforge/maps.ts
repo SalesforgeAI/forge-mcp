@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { ApiClient } from "../../api-client.js";
-import { handleTool, buildQuery, enc } from "../../helpers.js";
+import { handleTool, buildQuery, enc, idempotency } from "../../helpers.js";
 
 export function registerLeadsforgeMapsTools(server: McpServer, client: ApiClient) {
   server.registerTool(
@@ -17,9 +17,11 @@ export function registerLeadsforgeMapsTools(server: McpServer, client: ApiClient
         language: z.string().optional().describe("Language code for the results, e.g. 'en'"),
         webhookURL: z.string().optional().describe("Webhook URL for completion notification"),
         clientRequestID: z.string().optional().describe("Client request ID for tracking (max 128 chars)"),
+        idempotencyKey: z.string().optional().describe("Send the same key to retry safely: a repeat returns the job already created instead of a second one"),
       },
     },
-    (body) => handleTool(() => client.post("/maps-discovery/search", body)),
+    ({ idempotencyKey, ...body }) =>
+      handleTool(() => client.post("/maps-discovery/search", body, undefined, idempotency(idempotencyKey))),
   );
 
   server.registerTool(
@@ -78,9 +80,11 @@ export function registerLeadsforgeMapsTools(server: McpServer, client: ApiClient
         wantPhone: z.boolean().optional().describe("Look for phone numbers"),
         webhookURL: z.string().optional().describe("Webhook URL for completion notification"),
         clientRequestID: z.string().optional().describe("Client request ID for tracking (max 128 chars)"),
+        idempotencyKey: z.string().optional().describe("Send the same key to retry safely: a repeat returns the job already created instead of a second one"),
       },
     },
-    (body) => handleTool(() => client.post("/maps-discovery/enrich-owners", body)),
+    ({ idempotencyKey, ...body }) =>
+      handleTool(() => client.post("/maps-discovery/enrich-owners", body, undefined, idempotency(idempotencyKey))),
   );
 
   server.registerTool(

@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { ApiClient } from "../../api-client.js";
-import { handleTool } from "../../helpers.js";
+import { handleTool, idempotency } from "../../helpers.js";
 
 const lookalikeFilters = {
   domains: z.array(z.string()).describe("Company domains to find lookalikes for (1-10)"),
@@ -23,9 +23,18 @@ export function registerLeadsforgeLookalikesTools(server: McpServer, client: Api
         ...lookalikeFilters,
         page: z.number().optional().describe("Page number (min 1; defaults to 1 — server rejects omission)"),
         pageSize: z.number().optional().describe("Page size (1-100; defaults to 25)"),
+        idempotencyKey: z.string().optional().describe("Send the same key to retry safely: a repeat returns the job already created instead of a second one"),
       },
     },
-    (body) => handleTool(() => client.post("/lookalikes/search", { ...body, page: body.page ?? 1, pageSize: body.pageSize ?? 25 })),
+    ({ idempotencyKey, ...body }) =>
+      handleTool(() =>
+        client.post(
+          "/lookalikes/search",
+          { ...body, page: body.page ?? 1, pageSize: body.pageSize ?? 25 },
+          undefined,
+          idempotency(idempotencyKey),
+        ),
+      ),
   );
 
   server.registerTool(

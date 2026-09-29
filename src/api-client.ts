@@ -22,8 +22,13 @@ export class ApiClient {
     return this.request<T>("GET", path, query);
   }
 
-  async post<T>(path: string, body?: unknown, query?: Record<string, string | string[]>): Promise<T> {
-    return this.request<T>("POST", path, query, body);
+  async post<T>(
+    path: string,
+    body?: unknown,
+    query?: Record<string, string | string[]>,
+    headers?: Record<string, string>,
+  ): Promise<T> {
+    return this.request<T>("POST", path, query, body, headers);
   }
 
   async patch<T>(path: string, body?: unknown): Promise<T> {
@@ -43,6 +48,7 @@ export class ApiClient {
     path: string,
     query?: Record<string, string | string[]>,
     body?: unknown,
+    extraHeaders?: Record<string, string>,
   ): Promise<T> {
     let url = `${this.baseUrl}${path}`;
     if (query) {
@@ -65,6 +71,7 @@ export class ApiClient {
       Authorization: this.apiKey,
       Accept: "application/json",
       "X-Source": "forge-mcp",
+      ...extraHeaders,
     };
 
     const init: RequestInit = { method, headers };

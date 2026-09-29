@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { ApiClient } from "../../api-client.js";
-import { handleTool, buildQuery, enc } from "../../helpers.js";
+import { handleTool, buildQuery, enc, idempotency } from "../../helpers.js";
 
 export function registerLeadsforgeFollowersTools(server: McpServer, client: ApiClient) {
   server.registerTool(
@@ -18,9 +18,11 @@ export function registerLeadsforgeFollowersTools(server: McpServer, client: ApiC
         levels: z.array(z.string()).optional().describe("Seniority level filter"),
         webhookURL: z.string().optional().describe("Webhook URL for completion notification"),
         clientRequestID: z.string().optional().describe("Client request ID for tracking (max 128 chars)"),
+        idempotencyKey: z.string().optional().describe("Send the same key to retry safely: a repeat returns the job already created instead of a second one"),
       },
     },
-    (body) => handleTool(() => client.post("/company-followers/search", body)),
+    ({ idempotencyKey, ...body }) =>
+      handleTool(() => client.post("/company-followers/search", body, undefined, idempotency(idempotencyKey))),
   );
 
   server.registerTool(

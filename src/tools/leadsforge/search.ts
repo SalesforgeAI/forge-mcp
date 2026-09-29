@@ -69,6 +69,9 @@ const searchFilters = {
   companyYearsInBusinessRange: minMax.describe("Years in business range"),
   companyRevenueRanges: z.array(z.string()).optional().describe("Revenue category codes"),
   maxContactsPerCompany: z.number().optional().describe("0-100"),
+  excludeEmails: z.array(z.string()).optional().describe("Skip contacts with these email addresses, e.g. people you already own"),
+  excludeDomains: z.array(z.string()).optional().describe("Skip contacts at these company domains"),
+  excludeLinkedInURLs: z.array(z.string()).optional().describe("Skip contacts with these LinkedIn profile URLs"),
 };
 
 export function registerLeadsforgeSearchTools(server: McpServer, client: ApiClient) {
