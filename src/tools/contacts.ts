@@ -16,36 +16,57 @@ const VALIDATION_STATUSES = [
   "unvalidated",
 ] as const;
 
+const contactFilters = z.object({
+  workspaceId: z.string().describe("Workspace ID"),
+  tagIds: z.array(z.string()).optional().describe("Tag IDs to filter by"),
+  validationStatuses: z
+    .array(z.enum(VALIDATION_STATUSES))
+    .optional()
+    .describe("Validation statuses to filter by"),
+  notInSequenceId: z.string().optional().describe("Filter to contacts not enrolled in this sequence ID"),
+  hasValidLinkedIn: z.boolean().optional().describe("Filter to contacts that have a valid LinkedIn URL"),
+  notInEsps: z.array(z.string()).optional().describe("Exclude contacts whose email domain belongs to these ESPs"),
+});
+
+/** Serialize the shared contact filters for listing and exact counting. */
+function contactFilterQuery(filters: z.infer<typeof contactFilters>): QueryParams {
+  const query: QueryParams = {};
+  if (filters.notInSequenceId !== undefined) query.not_in_sequence_id = filters.notInSequenceId;
+  if (filters.hasValidLinkedIn !== undefined) query.has_valid_linkedin = String(filters.hasValidLinkedIn);
+  if (filters.tagIds?.length) query["tag_ids[]"] = filters.tagIds;
+  if (filters.validationStatuses?.length) query["validation_statuses[]"] = filters.validationStatuses;
+  if (filters.notInEsps?.length) query["not_in_esps[]"] = filters.notInEsps;
+  return query;
+}
+
 export function registerContactTools(server: McpServer, client: SalesforgeClient) {
   server.registerTool(
     "list_contacts",
     {
-      description: "List contacts in a workspace with optional filters (tags, validation statuses, ESPs, pagination)",
+      description: "List contacts in a workspace using cursor pagination. Omit cursor for the first page; pass nextCursor from the response with the same workspace and filters for the next page. Stop when hasMore is false (nextCursor is absent). Responses contain data, limit, hasMore and nextCursor, without a total count. Use count_contacts only when a total is needed.",
       inputSchema: {
-        workspaceId: z.string().describe("Workspace ID"),
-        limit: z.number().optional().describe("Max results per page (default 10)"),
-        offset: z.number().optional().describe("Offset for pagination"),
-        tagIds: z.array(z.string()).optional().describe("Tag IDs to filter by"),
-        validationStatuses: z
-          .array(z.enum(VALIDATION_STATUSES))
-          .optional()
-          .describe("Validation statuses to filter by"),
-        notInSequenceId: z.string().optional().describe("Filter to contacts not enrolled in this sequence ID"),
-        hasValidLinkedIn: z.boolean().optional().describe("Filter to contacts that have a valid LinkedIn URL"),
-        notInEsps: z.array(z.string()).optional().describe("Exclude contacts whose email domain belongs to these ESPs"),
+        ...contactFilters.shape,
+        limit: z.number().int().min(1).max(1000).optional().describe("Max results per page (1-1000, default 10)"),
+        cursor: z.string().min(1).optional().describe("Opaque nextCursor from the previous response; omit for the first page"),
       },
     },
-    ({ workspaceId, limit, offset, tagIds, validationStatuses, notInSequenceId, hasValidLinkedIn, notInEsps }) => {
-      const query: QueryParams = {};
+    ({ limit, cursor, ...filters }) => {
+      const query: QueryParams = { ...contactFilterQuery(filters), pagination: "cursor" };
       if (limit !== undefined) query.limit = String(limit);
-      if (offset !== undefined) query.offset = String(offset);
-      if (notInSequenceId !== undefined) query.not_in_sequence_id = notInSequenceId;
-      if (hasValidLinkedIn !== undefined) query.has_valid_linkedin = String(hasValidLinkedIn);
-      if (tagIds && tagIds.length) query["tag_ids[]"] = tagIds;
-      if (validationStatuses && validationStatuses.length) query["validation_statuses[]"] = validationStatuses;
-      if (notInEsps && notInEsps.length) query["not_in_esps[]"] = notInEsps;
-      return handleTool(() => client.coreGet(`/workspaces/${enc(workspaceId)}/contacts`, query));
+      if (cursor !== undefined) query.cursor = cursor;
+      return handleTool(() => client.coreGet(`/workspaces/${enc(filters.workspaceId)}/contacts`, query));
     },
+  );
+
+  server.registerTool(
+    "count_contacts",
+    {
+      description: "Get the exact total number of active contacts matching the same filters as list_contacts. Returns { total }. Call only when a total is needed; counts can be expensive and are not required for cursor pagination. Does not accept cursor, limit or offset.",
+      inputSchema: contactFilters.shape,
+    },
+    (filters) => handleTool(() => client.coreGet(
+      `/workspaces/${enc(filters.workspaceId)}/contacts/count`, contactFilterQuery(filters),
+    )),
   );
 
   const contactFields = {
