@@ -31,3 +31,7 @@ export function buildQuery(
   }
   return query;
 }
+
+export function idempotency(key?: string): Record<string, string> | undefined {
+  return key ? { "Idempotency-Key": key } : undefined;
+}
