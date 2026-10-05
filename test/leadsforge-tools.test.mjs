@@ -149,3 +149,38 @@ test("an idempotency key travels as a header, never in the body", async (t) => {
   assert.ok(!without.isError);
   assert.equal(calls.at(-1).headers["Idempotency-Key"], undefined);
 });
+
+test("strict schemas reject unknown keys and name them so the agent can retry", async (t) => {
+  const client = await setup(t);
+  const cases = [
+    ["leadsforge_search", { jobTitles: ["CTO"], industries: ["Tech"], limit: 10 }, ["jobTitles", "industries"]],
+    ["leadsforge_search", { leadLocations: { includes: ["US"] } }, ["includes"]],
+    ["leadsforge_count_search_results", { employeeRanges: ["1-10"] }, ["employeeRanges"]],
+    ["leadsforge_search_company_followers", { linkedinUrl: "https://www.linkedin.com/company/x", limit: 10, level: ["cxo"] }, ["level"]],
+    ["leadsforge_enrich_emails", { people: [{ linkedin: "https://www.linkedin.com/in/x" }] }, ["linkedin"]],
+  ];
+  for (const [name, args, badKeys] of cases) {
+    const result = await client.callTool({ name, arguments: args });
+    assert.equal(result.isError, true, `${name} should reject ${JSON.stringify(args)}`);
+    assert.match(result.content[0].text, /[Uu]nrecognized key/, name);
+    for (const key of badKeys) {
+      assert.ok(result.content[0].text.includes(key), `${name} error should name ${key}`);
+    }
+  }
+});
+
+test("strict schemas accept the correct field names", async (t) => {
+  const client = await setup(t);
+  t.mock.method(globalThis, "fetch", async () => new Response("{}", { status: 200 }));
+  const result = await client.callTool({
+    name: "leadsforge_search",
+    arguments: {
+      leadJobTitles: { include: ["CTO"], exactMatch: true },
+      leadLocations: { include: ["United States"] },
+      companyEmployeeNumberRange: { min: 1, max: 50 },
+      matchedEntityIDs: { personIDs: ["p1"] },
+      limit: 10,
+    },
+  });
+  assert.ok(!result.isError, JSON.stringify(result));
+});

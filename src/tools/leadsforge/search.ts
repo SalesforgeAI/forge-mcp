@@ -4,14 +4,14 @@ import { ApiClient } from "../../api-client.js";
 import { handleTool, buildQuery } from "../../helpers.js";
 
 const includeExclude = z
-  .object({
+  .strictObject({
     include: z.array(z.string()).optional(),
     exclude: z.array(z.string()).optional(),
   })
   .optional();
 
 const minMax = z
-  .object({
+  .strictObject({
     min: z.number().optional(),
     max: z.number().optional(),
   })
@@ -23,7 +23,7 @@ const searchFilters = {
   companyNiches: includeExclude.describe("Company niche filter"),
   companyBusinessModels: includeExclude.describe("Company business model filter, e.g. { include: ['b2b'] }"),
   leadLanguages: z
-    .object({
+    .strictObject({
       include: z.array(z.string()).optional(),
       exclude: z.array(z.string()).optional(),
       primaryOnly: z.boolean().optional(),
@@ -34,7 +34,7 @@ const searchFilters = {
   leadSeniorities: includeExclude.describe("Seniority filter, e.g. { include: ['c_suite','owner','founder','director','vp','manager','head'] }"),
   leadDepartments: includeExclude.describe("Department filter, e.g. { include: ['c_suite','master_sales'] }"),
   leadJobTitles: z
-    .object({
+    .strictObject({
       include: z.array(z.string()).optional(),
       exclude: z.array(z.string()).optional(),
       exactMatch: z.boolean().optional(),
@@ -49,7 +49,7 @@ const searchFilters = {
   companyTypes: includeExclude.describe("Company type filter"),
   companyRequired: z.boolean().optional().describe("If true, only return leads with a matched company"),
   companyKeywords: z
-    .object({
+    .strictObject({
       include: z.array(z.string()).optional(),
       exclude: z.array(z.string()).optional(),
       matchAll: z.boolean().optional(),
@@ -57,7 +57,7 @@ const searchFilters = {
     .optional()
     .describe("Company keyword filter. matchAll=true requires all includes to match"),
   companyTechnologies: z
-    .object({
+    .strictObject({
       any: z.array(z.string()).optional(),
       all: z.array(z.string()).optional(),
     })
@@ -71,7 +71,7 @@ const searchFilters = {
   maxContactsPerCompany: z.number().optional().describe("0-100"),
   leadLinkedInURLs: z.array(z.string()).optional().describe("Find these exact people by their LinkedIn profile URLs"),
   matchedEntityIDs: z
-    .object({
+    .strictObject({
       companyIDs: z.array(z.string()).optional(),
       personIDs: z.array(z.string()).optional(),
     })
@@ -97,11 +97,11 @@ export function registerLeadsforgeSearchTools(server: McpServer, client: ApiClie
     {
       description:
         "Search for leads in LeadsForge. Returns lead previews only — emails/LinkedIn require a follow-up call to leadsforge_enrich_emails / leadsforge_enrich_linkedin with the returned person IDs. For pagination, pass the cursor from the previous response as `cursor` — when cursor is set, filters are ignored and the prior result is scrolled.",
-      inputSchema: {
+      inputSchema: z.strictObject({
         ...searchFilters,
         limit: z.number().optional().describe("Max results (1-2000)"),
         cursor: z.string().optional().describe("Pagination cursor from previous response. When set, filters are ignored."),
-      },
+      }),
     },
     ({ cursor, ...body }) =>
       handleTool(() =>
@@ -115,7 +115,7 @@ export function registerLeadsforgeSearchTools(server: McpServer, client: ApiClie
     "leadsforge_count_search_results",
     {
       description: "Count leads matching a filter set without returning them. Free. Same filters as leadsforge_search, no limit or cursor. Use it to size an audience before searching.",
-      inputSchema: searchFilters,
+      inputSchema: z.strictObject(searchFilters),
     },
     (body) => handleTool(() => client.post("/search/count", body)),
   );
@@ -124,11 +124,11 @@ export function registerLeadsforgeSearchTools(server: McpServer, client: ApiClie
     "leadsforge_get_search_industry_filters",
     {
       description: "Search the industry values accepted by companyIndustries in leadsforge_search. Values are exact and case sensitive, send them verbatim.",
-      inputSchema: {
+      inputSchema: z.strictObject({
         search: z.string().optional().describe("Filter industries by name"),
         limit: z.number().optional().describe("Max values (1-100; defaults to 100)"),
         offset: z.number().optional().describe("Offset"),
-      },
+      }),
     },
     ({ search, limit, offset }) =>
       handleTool(() => client.get("/search/filters/industries", buildQuery({ search, limit: limit ?? 100, offset }))),

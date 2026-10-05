@@ -5,7 +5,7 @@ import { handleTool, idempotency } from "../../helpers.js";
 
 const lookalikeFilters = {
   domains: z.array(z.string()).describe("Company domains to find lookalikes for (1-10)"),
-  locations: z.array(z.object({
+  locations: z.array(z.strictObject({
     id: z.string().describe("Location ID (use leadsforge_get_* filter tools to discover valid IDs)"),
     type: z.enum(["region", "country"]).describe("Location type"),
   })).optional().describe("Location filters — each entry is { id, type }"),
@@ -19,12 +19,12 @@ export function registerLeadsforgeLookalikesTools(server: McpServer, client: Api
     "leadsforge_search_lookalikes",
     {
       description: "Search for companies similar to provided domains. Costs 1 credit per company returned. Use leadsforge_preview_lookalikes first for a free look.",
-      inputSchema: {
+      inputSchema: z.strictObject({
         ...lookalikeFilters,
         page: z.number().optional().describe("Page number (min 1; defaults to 1 — server rejects omission)"),
         pageSize: z.number().optional().describe("Page size (1-100; defaults to 25)"),
         idempotencyKey: z.string().optional().describe("Send the same key to retry safely: a repeat returns the job already created instead of a second one"),
-      },
+      }),
     },
     ({ idempotencyKey, ...body }) =>
       handleTool(() =>
@@ -41,7 +41,7 @@ export function registerLeadsforgeLookalikesTools(server: McpServer, client: Api
     "leadsforge_preview_lookalikes",
     {
       description: "Free preview of companies similar to provided domains. No credits, company details only. To get people at those companies, pass a returned domain into leadsforge_search as companyDomains.include.",
-      inputSchema: lookalikeFilters,
+      inputSchema: z.strictObject(lookalikeFilters),
     },
     (body) => handleTool(() => client.post("/lookalikes/preview", body)),
   );
