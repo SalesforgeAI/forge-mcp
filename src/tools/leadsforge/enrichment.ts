@@ -3,7 +3,7 @@ import { z } from "zod";
 import { ApiClient } from "../../api-client.js";
 import { handleTool, buildQuery, idempotency } from "../../helpers.js";
 
-const personInput = z.object({
+const personInput = z.strictObject({
   firstName: z.string().optional(),
   lastName: z.string().optional(),
   company: z.string().optional(),
@@ -31,6 +31,9 @@ const enrichmentInput = {
   idempotencyKey: z.string().optional().describe("Send the same key to retry safely: a repeat returns the job already created instead of a second one"),
 };
 
+const enrichmentSchema = z.strictObject(enrichmentInput);
+const syncEnrichmentSchema = z.strictObject(syncEnrichmentInput);
+
 type EnrichmentBody = {
   personIDs?: string[];
   people?: unknown[];
@@ -49,7 +52,7 @@ export function registerLeadsforgeEnrichmentTools(server: McpServer, client: Api
     "leadsforge_enrich_emails",
     {
       description: "Find email addresses. Async — returns a jobID; poll leadsforge_get_enrichment_job and fetch results with leadsforge_get_enrichment_results.",
-      inputSchema: enrichmentInput,
+      inputSchema: enrichmentSchema,
     },
     ({ idempotencyKey, ...body }) => handleTool(() => {
       assertPersonsXOR(body);
@@ -61,7 +64,7 @@ export function registerLeadsforgeEnrichmentTools(server: McpServer, client: Api
     "leadsforge_enrich_phones",
     {
       description: "Find phone numbers. Async — returns a jobID; poll leadsforge_get_enrichment_job and fetch results with leadsforge_get_enrichment_results.",
-      inputSchema: enrichmentInput,
+      inputSchema: enrichmentSchema,
     },
     ({ idempotencyKey, ...body }) => handleTool(() => {
       assertPersonsXOR(body);
@@ -73,7 +76,7 @@ export function registerLeadsforgeEnrichmentTools(server: McpServer, client: Api
     "leadsforge_enrich_linkedin",
     {
       description: "Find LinkedIn profiles. Async — returns a jobID; poll leadsforge_get_enrichment_job and fetch results with leadsforge_get_enrichment_results.",
-      inputSchema: enrichmentInput,
+      inputSchema: enrichmentSchema,
     },
     ({ idempotencyKey, ...body }) => handleTool(() => {
       assertPersonsXOR(body);
@@ -85,9 +88,9 @@ export function registerLeadsforgeEnrichmentTools(server: McpServer, client: Api
     "leadsforge_get_enrichment_job",
     {
       description: "Get status of a LeadsForge enrichment job",
-      inputSchema: {
+      inputSchema: z.strictObject({
         jobID: z.string().describe("Enrichment job ID"),
-      },
+      }),
     },
     ({ jobID }) => handleTool(() => client.get(`/enrichment/jobs/${jobID}`)),
   );
@@ -96,11 +99,11 @@ export function registerLeadsforgeEnrichmentTools(server: McpServer, client: Api
     "leadsforge_get_enrichment_results",
     {
       description: "Get results of a LeadsForge enrichment job",
-      inputSchema: {
+      inputSchema: z.strictObject({
         jobID: z.string().describe("Enrichment job ID"),
         limit: z.number().optional().describe("Max results (defaults to 100; server rejects omission)"),
         offset: z.number().optional().describe("Offset"),
-      },
+      }),
     },
     ({ jobID, limit, offset }) =>
       handleTool(() => client.get(`/enrichment/jobs/${jobID}/results`, buildQuery({ limit: limit ?? 100, offset }))),
@@ -110,7 +113,7 @@ export function registerLeadsforgeEnrichmentTools(server: McpServer, client: Api
     "leadsforge_enrich_email_sync",
     {
       description: "Find one person's work email and get it in the same response, no job polling. Identify them with personID, linkedinURL, or firstName + lastName + companyDomain. Costs 1 credit on a hit, a miss is free.",
-      inputSchema: syncEnrichmentInput,
+      inputSchema: syncEnrichmentSchema,
     },
     (body) => handleTool(() => client.post("/enrichment/email", body)),
   );
@@ -119,7 +122,7 @@ export function registerLeadsforgeEnrichmentTools(server: McpServer, client: Api
     "leadsforge_enrich_phone_sync",
     {
       description: "Find one person's phone number and get it in the same response, no job polling. Identify them with personID, linkedinURL, or firstName + lastName + companyDomain. Costs 10 credits on a hit, a miss is free.",
-      inputSchema: syncEnrichmentInput,
+      inputSchema: syncEnrichmentSchema,
     },
     (body) => handleTool(() => client.post("/enrichment/phone", body)),
   );
@@ -128,7 +131,7 @@ export function registerLeadsforgeEnrichmentTools(server: McpServer, client: Api
     "leadsforge_list_enrichment_jobs",
     {
       description: "List past and running enrichment jobs, newest first",
-      inputSchema: {
+      inputSchema: z.strictObject({
         limit: z.number().optional().describe("Max jobs (1-100; defaults to 25)"),
         offset: z.number().optional().describe("Offset"),
         status: z.enum(["in_progress", "completed", "failed"]).optional().describe("Filter by status"),
@@ -136,7 +139,7 @@ export function registerLeadsforgeEnrichmentTools(server: McpServer, client: Api
         clientRequestID: z.string().optional().describe("Filter by your own request ID"),
         from: z.string().optional().describe("Created after, RFC3339"),
         to: z.string().optional().describe("Created before, RFC3339"),
-      },
+      }),
     },
     ({ limit, offset, status, channel, clientRequestID, from, to }) =>
       handleTool(() =>
