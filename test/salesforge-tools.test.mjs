@@ -19,6 +19,25 @@ async function setup(t, clients = { salesforge: new SalesforgeClient("test-api-k
 const core = "https://api.salesforge.ai/public/v2/workspaces/w%2F1";
 const mc = "https://multichannel-api.salesforge.ai/public/multichannel/workspaces/w%2F1";
 
+const sequenceTree = {
+  name: "Tree",
+  timezone: "Europe/London",
+  settings: { openTrackingEnabled: true },
+  schedule: { monday: { enabled: true, from: 9, to: 17 } },
+  steps: [
+    { ref: "intro", type: "action", actionId: 3, variants: [{ metadata: { subject: "Hi", message: "Hello" }, exposureInPercentage: 100, isEnabled: true }] },
+    {
+      ref: "bounced",
+      type: "condition",
+      conditionId: 6,
+      branches: {
+        no: [{ ref: "follow-up", type: "action", actionId: 3, waitInMinutes: 1440 }],
+        yes: [],
+      },
+    },
+  ],
+};
+
 test("SF-9461 Salesforge tools map MCP inputs to public API contracts", async (t) => {
   const client = await setup(t);
   const calls = [];
@@ -37,6 +56,9 @@ test("SF-9461 Salesforge tools map MCP inputs to public API contracts", async (t
     ["connect_linkedin_account", { email: "a@example.com", password: "secret", skipSenderProfile: true, proxy: { host: "socks5://proxy.example.com", port: 1080, username: "u", password: "p" } }, "POST", `${mc}/linkedin/accounts`, { email: "a@example.com", password: "secret", skipSenderProfile: true, proxy: { host: "socks5://proxy.example.com", port: 1080, username: "u", password: "p" } }],
     ["get_linkedin_account", { linkedinAccountId: 42 }, "GET", `${mc}/linkedin/accounts/42`],
     ["submit_linkedin_account_otp", { linkedinAccountId: 42, code: "012345" }, "POST", `${mc}/linkedin/accounts/42/otp`, { code: "012345" }],
+    ["list_dnc_entries", { limit: 50, offset: 100 }, "GET", `${core}/dnc?limit=50&offset=100`],
+    ["remove_dnc_entries", { dncs: ["a@example.com", "example.com"] }, "POST", `${core}/dnc/bulk/remove`, { dncs: ["a@example.com", "example.com"] }, 204],
+    ["create_sequence_with_steps", sequenceTree, "POST", `${mc}/sequences/bulk`, sequenceTree, 201],
   ];
   const listed = (await client.listTools()).tools;
   for (const [name, args, method, url, body, responseStatus = 200] of cases) {
@@ -68,6 +90,12 @@ test("invalid account and contact inputs never reach the API", async (t) => {
     ["get_linkedin_account", { linkedinAccountId: 1.5 }],
     ["submit_linkedin_account_otp", { linkedinAccountId: 42, code: "123" }],
     ["list_tags", { limit: 101 }],
+    ["list_dnc_entries", { limit: 1001 }],
+    ["remove_dnc_entries", { dncs: [] }],
+    ["remove_dnc_entries", { dncs: Array(1001).fill("example.com") }],
+    ["create_sequence_with_steps", { name: "Tree", steps: [] }],
+    ["create_sequence_with_steps", { name: "Tree", timezone: "UTC", steps: [{ type: "delay" }] }],
+    ["create_sequence_with_steps", { name: "Tree", timezone: "UTC", steps: [{ type: "condition", conditionId: 6, branches: { no: [{ type: "action", actionId: 3, waitInMinutes: -1 }] } }] }],
   ];
   for (const [name, args] of cases) {
     const result = await client.callTool({ name, arguments: { workspaceId: "w1", ...args } });

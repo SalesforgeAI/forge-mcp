@@ -7,6 +7,39 @@ const sequenceLeadSequenceId = z.string().regex(/^[0-9]+$/)
   .refine((value) => Number(value) >= 1 && Number(value) <= 2147483647, "Sequence ID must be between 1 and 2147483647")
   .describe("Numeric multichannel sequence ID as a string; legacy seq_ IDs are not supported");
 
+const scheduleDay = z.object({
+  enabled: z.boolean(),
+  from: z.number().int().min(0).max(23),
+  to: z.number().int().min(0).max(23),
+});
+
+const sequenceStepVariant = z.object({
+  metadata: z.object({
+    name: z.string().optional().describe("Variant name"),
+    subject: z.string().optional().describe("Email subject line (for send_email action)"),
+    message: z.string().optional().describe("Message body / email body"),
+  }),
+  exposureInPercentage: z.number().int().min(0).max(100).describe("Traffic percentage for this variant (enabled variants must sum to 100)"),
+  isEnabled: z.boolean().describe("Whether this variant is enabled"),
+});
+
+const sequenceStep = z.object({
+  ref: z.string().max(100).optional().describe("Optional reference, unique in the request, echoed back on the created node"),
+  type: z.enum(["action", "condition"]).describe("Step type"),
+  actionId: z.number().int().positive().optional().describe("Action type ID for action steps (get from list_action_types): 1=li_connection_request, 2=li_send_message, 3=send_email, 4=li_view_profile, 5=li_withdraw_connection_request, 6=li_like_latest_post, 7=li_follow_profile, 8=li_send_inmail"),
+  conditionId: z.number().int().positive().optional().describe("Condition type ID for condition steps (get from list_condition_types)"),
+  waitInMinutes: z.number().int().min(0).optional().describe("Minutes to wait before this step (e.g. 1440 = 1 day). For conditions, how long the condition is evaluated; 0 uses the condition's default"),
+  distributionStrategy: z.enum(["equal", "custom"]).optional().describe("How to distribute traffic across variants (action steps only)"),
+  variants: z.array(sequenceStepVariant).optional().describe("Message variants (action steps only). Enabled exposureInPercentage values must sum to 100"),
+  metadata: z.object({
+    allowedValidationStatuses: z.array(z.string()).min(1).optional().describe("Allowed email validation statuses (check_email_validation_status condition)"),
+  }).optional().describe("Condition configuration (condition steps only)"),
+  get branches() {
+    return z.record(z.string(), z.array(sequenceStep)).optional()
+      .describe("Condition steps only: steps per branch keyed by branch name, e.g. { \"yes\": [...], \"no\": [...] }. A missing or empty branch ends the sequence on that path");
+  },
+});
+
 function seqPath(workspaceId: string, sequenceId?: string) {
   const base = `/multichannel/workspaces/${enc(workspaceId)}/sequences`;
   return sequenceId ? `${base}/${enc(sequenceId)}` : base;
@@ -84,6 +117,33 @@ export function registerSequenceTools(server: McpServer, client: SalesforgeClien
     },
     ({ workspaceId, ...body }) =>
       handleTool(() => client.mcPost(seqPath(workspaceId), body)),
+  );
+
+  server.registerTool(
+    "create_sequence_with_steps",
+    {
+      description: "Create a multichannel sequence together with its whole step tree (actions, conditions and their branches), settings and schedule in one request, instead of create_sequence plus one create_action_node/create_condition_node call per step. Steps in a list run one after another; a condition must be the last step of its list and the steps after it go in its branches (e.g. yes/no). Nothing is created if any step is invalid. Required follow-up conditions (e.g. request accepted within days after a LinkedIn connection request) are not added automatically. At most 100 steps.",
+      inputSchema: {
+        workspaceId: z.string().describe("Workspace ID"),
+        name: z.string().min(1).describe("Sequence name"),
+        description: z.string().optional().describe("Sequence description"),
+        timezone: z.string().min(1).describe("IANA timezone (e.g. America/New_York)"),
+        kind: z.enum(["primary", "subsequence"]).optional().describe("Sequence kind (default primary)"),
+        settings: z.record(z.string(), z.any()).optional().describe("Sequence settings object, same fields as update_sequence_settings"),
+        schedule: z.object({
+          monday: scheduleDay.optional(),
+          tuesday: scheduleDay.optional(),
+          wednesday: scheduleDay.optional(),
+          thursday: scheduleDay.optional(),
+          friday: scheduleDay.optional(),
+          saturday: scheduleDay.optional(),
+          sunday: scheduleDay.optional(),
+        }).optional().describe("Sending schedule per day of week (from/to are hours 0-23). Defaults to Monday-Friday 8-18"),
+        steps: z.array(sequenceStep).max(100).describe("Steps that run one after another from the start of the sequence"),
+      },
+    },
+    ({ workspaceId, ...body }) =>
+      handleTool(() => client.mcPost(`${seqPath(workspaceId)}/bulk`, body)),
   );
 
   server.registerTool(
