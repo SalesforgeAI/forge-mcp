@@ -4,13 +4,18 @@ import { ApiClient } from "../../api-client.js";
 import { handleTool, buildQuery, enc, idempotency } from "../../helpers.js";
 
 export function registerLeadsforgeFollowersTools(server: McpServer, client: ApiClient) {
+  // Followers moved to ScrapeLi under /public/v2; the rest of the LeadsForge API stays on v1.
+  const api = client.withBasePath((base) => base.replace(/\/v1$/, "/v2"));
+
   server.registerTool(
     "leadsforge_search_company_followers",
     {
-      description: "Pull the people who follow a LinkedIn company page. Async, returns a jobID: poll leadsforge_get_company_followers_job and read the people with leadsforge_get_company_followers_results. Charged per follower collected. Filter values come from the leadsforge_get_followers_* tools.",
+      description:
+        "Pull the people who follow a LinkedIn company page (ScrapeLi). Async, returns a jobID: poll leadsforge_get_company_followers_job and read the people with leadsforge_get_company_followers_results. Without filters it collects every follower (or the first `limit`); with filters it targets a segment. Runs minutes to hours for large companies. Charged per follower collected. Filter values come from the leadsforge_get_followers_* tools.",
       inputSchema: z.strictObject({
-        linkedinUrl: z.string().describe("LinkedIn company page URL, e.g. https://www.linkedin.com/company/salesforge"),
+        companyUrl: z.string().describe("LinkedIn company page URL, e.g. https://www.linkedin.com/company/salesforge"),
         limit: z.number().describe("How many followers to collect (1-50000)"),
+        enrichEmails: z.boolean().optional().describe("Also find verified work emails for each follower (extra credits)"),
         countries: z.array(z.string()).optional().describe("Country filter"),
         states: z.array(z.string()).optional().describe("State filter"),
         jobTitles: z.array(z.string()).optional().describe("Job title filter"),
@@ -22,7 +27,7 @@ export function registerLeadsforgeFollowersTools(server: McpServer, client: ApiC
       }),
     },
     ({ idempotencyKey, ...body }) =>
-      handleTool(() => client.post("/company-followers/search", body, undefined, idempotency(idempotencyKey))),
+      handleTool(() => api.post("/company-followers/search", body, undefined, idempotency(idempotencyKey))),
   );
 
   server.registerTool(
@@ -33,13 +38,13 @@ export function registerLeadsforgeFollowersTools(server: McpServer, client: ApiC
         jobID: z.string().describe("Company followers job ID"),
       }),
     },
-    ({ jobID }) => handleTool(() => client.get(`/company-followers/jobs/${enc(jobID)}`)),
+    ({ jobID }) => handleTool(() => api.get(`/company-followers/jobs/${enc(jobID)}`)),
   );
 
   server.registerTool(
     "leadsforge_get_company_followers_results",
     {
-      description: "Get the followers collected by a company followers job. Person IDs here can be sent to leadsforge_enrich_emails and leadsforge_enrich_phones.",
+      description: "Get the followers collected by a company followers job.",
       inputSchema: z.strictObject({
         jobID: z.string().describe("Company followers job ID"),
         limit: z.number().optional().describe("Max results (1-500; defaults to 100)"),
@@ -48,29 +53,7 @@ export function registerLeadsforgeFollowersTools(server: McpServer, client: ApiC
     },
     ({ jobID, limit, offset }) =>
       handleTool(() =>
-        client.get(`/company-followers/jobs/${enc(jobID)}/results`, buildQuery({ limit: limit ?? 100, offset })),
-      ),
-  );
-
-  server.registerTool(
-    "leadsforge_list_company_followers_jobs",
-    {
-      description: "List past and running company followers jobs, newest first",
-      inputSchema: z.strictObject({
-        limit: z.number().optional().describe("Max jobs (1-100; defaults to 25)"),
-        offset: z.number().optional().describe("Offset"),
-        status: z.enum(["in_progress", "completed", "failed", "no_results"]).optional().describe("Filter by status"),
-        clientRequestID: z.string().optional().describe("Filter by your own request ID"),
-        from: z.string().optional().describe("Created after, RFC3339"),
-        to: z.string().optional().describe("Created before, RFC3339"),
-      }),
-    },
-    ({ limit, offset, status, clientRequestID, from, to }) =>
-      handleTool(() =>
-        client.get(
-          "/company-followers/jobs",
-          buildQuery({ limit: limit ?? 25, offset, status, clientRequestID, from, to }),
-        ),
+        api.get(`/company-followers/jobs/${enc(jobID)}/results`, buildQuery({ limit: limit ?? 100, offset })),
       ),
   );
 
@@ -80,7 +63,7 @@ export function registerLeadsforgeFollowersTools(server: McpServer, client: ApiC
       description: "Get the country values accepted by leadsforge_search_company_followers",
       inputSchema: {},
     },
-    () => handleTool(() => client.get("/company-followers/filters/countries")),
+    () => handleTool(() => api.get("/company-followers/filters/countries")),
   );
 
   server.registerTool(
@@ -89,7 +72,7 @@ export function registerLeadsforgeFollowersTools(server: McpServer, client: ApiC
       description: "Get the state values accepted by leadsforge_search_company_followers",
       inputSchema: {},
     },
-    () => handleTool(() => client.get("/company-followers/filters/states")),
+    () => handleTool(() => api.get("/company-followers/filters/states")),
   );
 
   server.registerTool(
@@ -98,7 +81,7 @@ export function registerLeadsforgeFollowersTools(server: McpServer, client: ApiC
       description: "Get the department values accepted by leadsforge_search_company_followers",
       inputSchema: {},
     },
-    () => handleTool(() => client.get("/company-followers/filters/departments")),
+    () => handleTool(() => api.get("/company-followers/filters/departments")),
   );
 
   server.registerTool(
@@ -107,7 +90,7 @@ export function registerLeadsforgeFollowersTools(server: McpServer, client: ApiC
       description: "Get the seniority level values accepted by leadsforge_search_company_followers",
       inputSchema: {},
     },
-    () => handleTool(() => client.get("/company-followers/filters/levels")),
+    () => handleTool(() => api.get("/company-followers/filters/levels")),
   );
 
   server.registerTool(
@@ -122,7 +105,7 @@ export function registerLeadsforgeFollowersTools(server: McpServer, client: ApiC
     },
     ({ search, page, pageSize }) =>
       handleTool(() =>
-        client.get("/company-followers/filters/job-titles", buildQuery({ search, page, page_size: pageSize })),
+        api.get("/company-followers/filters/job-titles", buildQuery({ search, page, page_size: pageSize })),
       ),
   );
 }

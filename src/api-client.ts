@@ -18,6 +18,12 @@ export class ApiClient {
     private product: string,
   ) {}
 
+  // withBasePath returns a client for a rewritten base URL (same key/product), so a tool can target a
+  // different API version without re-plumbing the key. Used by the v2 followers tools.
+  withBasePath(rewrite: (base: string) => string): ApiClient {
+    return new ApiClient(this.apiKey, rewrite(this.baseUrl), this.product);
+  }
+
   async get<T>(path: string, query?: Record<string, string | string[]>): Promise<T> {
     return this.request<T>("GET", path, query);
   }
