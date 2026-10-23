@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { SalesforgeClient } from "../client.js";
-import { handleTool, enc } from "../helpers.js";
+import { handleTool, enc, buildQuery } from "../helpers.js";
 
 function nodesPath(workspaceId: string, sequenceId: string, nodeId?: string) {
   const base = `/multichannel/workspaces/${enc(workspaceId)}/sequences/${enc(sequenceId)}/nodes`;
@@ -34,6 +34,29 @@ export function registerNodeTools(server: McpServer, client: SalesforgeClient) {
     },
     ({ workspaceId, sequenceId, nodeId }) =>
       handleTool(() => client.mcGet(nodesPath(workspaceId, sequenceId, nodeId))),
+  );
+
+  server.registerTool(
+    "spam_check_sequence_node",
+    {
+      description: "Run the spam check on the saved subject and body of an email action node. Returns one result per variant (variants with an empty subject and body are skipped) with a spam potential score and a rating (good, ok, bad) for each metric: spam words, links, images, emojis, word count and spintax variables. Read-only; the node is not changed. Checks the stored content, so save edits with update_action_node first.",
+      annotations: { readOnlyHint: true },
+      inputSchema: {
+        workspaceId: z.string().describe("Workspace ID"),
+        sequenceId: z.string().describe("Sequence ID"),
+        nodeId: z.string().describe("Node ID of an email action node"),
+        variantId: z.number().int().optional().describe("Only check this variant of the node (default: all variants)"),
+        language: z.enum([
+          "american_english", "british_english", "spanish", "french", "german",
+          "italian", "polish", "russian", "finnish", "ukrainian",
+        ]).optional().describe("Spam word dictionary (default american_english)"),
+      },
+    },
+    ({ workspaceId, sequenceId, nodeId, variantId, language }) =>
+      handleTool(() => client.mcGet(
+        `${nodesPath(workspaceId, sequenceId, nodeId)}/spam-check`,
+        buildQuery({ variantId, language }),
+      )),
   );
 
   server.registerTool(
