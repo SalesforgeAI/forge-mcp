@@ -38,14 +38,39 @@ test("spam_check_sequence_node calls the node spam-check endpoint", async (t) =>
   assert.deepEqual(JSON.parse(result.content[0].text), response);
   assert.deepEqual(calls.at(-1), { url: base, method: "GET" });
 
+  await client.callTool({ name, arguments: { ...valid, variantId: 5 } });
+  let url = new URL(calls.at(-1).url);
+  assert.equal(url.origin + url.pathname, base);
+  assert.deepEqual([...url.searchParams], [["variantId", "5"]]);
+
+  await client.callTool({ name, arguments: { ...valid, language: "german" } });
+  url = new URL(calls.at(-1).url);
+  assert.deepEqual([...url.searchParams], [["language", "german"]]);
+
   await client.callTool({ name, arguments: { ...valid, variantId: 5, language: "german" } });
-  assert.equal(calls.at(-1).url, `${base}?variantId=5&language=german`);
+  url = new URL(calls.at(-1).url);
+  assert.equal(url.searchParams.get("variantId"), "5");
+  assert.equal(url.searchParams.get("language"), "german");
 });
 
-test("spam_check_sequence_node rejects an unknown language", async (t) => {
+test("spam_check_sequence_node rejects invalid input before calling the API", async (t) => {
   const client = await setup(t);
   const fetchMock = t.mock.method(globalThis, "fetch", async () => new Response("{}", { status: 200 }));
-  const result = await client.callTool({ name, arguments: { ...valid, language: "klingon" } });
-  assert.equal(result.isError, true);
+  assert.ok((await client.listTools()).tools.some((tool) => tool.name === name));
+  const ok = await client.callTool({ name, arguments: valid });
+  assert.ok(!ok.isError, JSON.stringify(ok));
+  fetchMock.mock.resetCalls();
+  const invalid = [
+    { sequenceId: "10", nodeId: "20" },
+    { workspaceId: "w/1", nodeId: "20" },
+    { workspaceId: "w/1", sequenceId: "10" },
+    { ...valid, variantId: 1.5 },
+    { ...valid, variantId: "5" },
+    { ...valid, language: "klingon" },
+  ];
+  for (const args of invalid) {
+    const result = await client.callTool({ name, arguments: args });
+    assert.equal(result.isError, true, JSON.stringify(args));
+  }
   assert.equal(fetchMock.mock.callCount(), 0);
 });
