@@ -93,7 +93,12 @@ test("invalid account and contact inputs never reach the API", async (t) => {
     ["list_dnc_entries", { limit: 1001 }],
     ["remove_dnc_entries", { dncs: [] }],
     ["remove_dnc_entries", { dncs: Array(1001).fill("example.com") }],
-    ["create_sequence_with_steps", { name: "Tree", steps: [] }],
+    ["create_sequence_with_steps", { name: "Tree", timezone: "UTC", steps: [] }],
+    ["create_sequence_with_steps", { name: "Tree", timezone: "UTC", steps: [{ type: "action", actionId: 3, waitDays: 2 }] }],
+    ["create_sequence_with_steps", { name: "Tree", timezone: "UTC", steps: [{ type: "action", actionId: 3, variants: [{ metadata: { subject: "Hi" }, exposurePercentage: 100, isEnabled: true }] }] }],
+    ["create_sequence_with_steps", { name: "Tree", timezone: "UTC", settings: { open_tracking_enabled: true }, steps: [{ type: "action", actionId: 3 }] }],
+    ["create_sequence_with_steps", { name: "Tree", timezone: "UTC", schedule: { mondy: { enabled: true, from: 9, to: 17 } }, steps: [{ type: "action", actionId: 3 }] }],
+    ["create_sequence_with_steps", { name: "Tree", timezone: "UTC", steps: [{ type: "condition", conditionId: 6, branches: { no: [{ type: "action", actionId: 3, waitDays: 1 }] } }] }],
     ["create_sequence_with_steps", { name: "Tree", timezone: "UTC", steps: [{ type: "delay" }] }],
     ["create_sequence_with_steps", { name: "Tree", timezone: "UTC", steps: [{ type: "condition", conditionId: 6, branches: { no: [{ type: "action", actionId: 3, waitInMinutes: -1 }] } }] }],
   ];
