@@ -147,7 +147,7 @@ export function registerSequenceTools(server: McpServer, client: SalesforgeClien
   server.registerTool(
     "create_sequence_with_steps",
     {
-      description: "Create a multichannel sequence together with its whole step tree (actions, conditions and their branches), settings and schedule in one request, instead of create_sequence plus one create_action_node/create_condition_node call per step. Steps in a list run one after another; a condition must be the last step of its list and the steps after it go in its branches (e.g. yes/no). Nothing is created if any step is invalid. Required follow-up conditions (e.g. request accepted within days after a LinkedIn connection request) are not added automatically. At most 100 steps in total, counting the steps inside branches.",
+      description: "Create a multichannel sequence together with its whole step tree (actions, conditions and their branches), settings and schedule in one request, instead of create_sequence plus one create_action_node/create_condition_node call per step. Steps in a list run one after another; a condition must be the last step of its list and the steps after it go in its branches (e.g. yes/no). Nothing is created if any step is invalid. Required follow-up conditions (e.g. request accepted within days after a LinkedIn connection request) are not added automatically.",
       inputSchema: {
         workspaceId: z.string().describe("Workspace ID"),
         name: z.string().min(1).describe("Sequence name"),
@@ -164,7 +164,7 @@ export function registerSequenceTools(server: McpServer, client: SalesforgeClien
           saturday: scheduleDay.optional(),
           sunday: scheduleDay.optional(),
         }).optional().describe("Sending schedule per day of week (from/to are hours 0-23). Days left out are disabled; omit schedule entirely for the default Monday-Friday 8-18"),
-        steps: z.array(sequenceStep).min(1).max(100).describe("Steps that run one after another from the start of the sequence"),
+        steps: z.array(sequenceStep).min(1).describe("Steps that run one after another from the start of the sequence"),
       },
     },
     ({ workspaceId, ...body }) =>
