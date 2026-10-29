@@ -1,32 +1,14 @@
 #!/usr/bin/env node
 
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { SalesforgeClient } from "./client.js";
-import { ApiClient } from "./api-client.js";
+import { PRODUCTS } from "./products.js";
+import { buildProductClients } from "./product-clients.js";
 import { createServer, ProductClients } from "./server.js";
 
 function buildClients(): ProductClients {
-  const clients: ProductClients = {};
-
-  const sfKey = process.env.SALESFORGE_API_KEY;
-  if (sfKey) clients.salesforge = new SalesforgeClient(sfKey);
-
-  const pfKey = process.env.PRIMEFORGE_API_KEY;
-  if (pfKey) clients.primeforge = new ApiClient(pfKey, "https://api.primeforge.ai/public", "PrimeForge");
-
-  const lfKey = process.env.LEADSFORGE_API_KEY;
-  if (lfKey) clients.leadsforge = new ApiClient(lfKey, "https://api.leadsforge.ai/public/v1", "LeadsForge");
-
-  const ifKey = process.env.INFRAFORGE_API_KEY;
-  if (ifKey) clients.infraforge = new ApiClient(ifKey, "https://api.infraforge.ai/public", "InfraForge");
-
-  const wfKey = process.env.WARMFORGE_API_KEY;
-  if (wfKey) clients.warmforge = new ApiClient("Bearer " + wfKey, "https://api.warmforge.ai/public/v1", "WarmForge");
-
-  const mfKey = process.env.MAILFORGE_API_KEY;
-  if (mfKey) clients.mailforge = new ApiClient(mfKey, "https://api.mailforge.ai/public", "MailForge");
-
-  return clients;
+  return buildProductClients(Object.fromEntries(
+    PRODUCTS.map((product) => [product, process.env[`${product.toUpperCase()}_API_KEY`]]),
+  ));
 }
 
 async function main() {
