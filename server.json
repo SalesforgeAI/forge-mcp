@@ -7,6 +7,12 @@
     "source": "github"
   },
   "version": "1.0.0",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.salesforge.ai/mcp"
+    }
+  ],
   "packages": [
     {
       "registryType": "npm",

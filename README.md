@@ -22,7 +22,23 @@ Only provide API keys for the products you use. Tools for unconfigured products 
 
 ## Quick Start
 
-### Claude Desktop
+### Claude (connect with your Salesforge login)
+
+Add the connector with the URL `https://mcp.salesforge.ai/mcp` and click **Connect**. Claude opens a Salesforge page where you sign in and approve access; no API keys are needed. Claude can then use the Forge products your account uses. You can disconnect at any time in Salesforge under **Settings > Connected apps**.
+
+- Only account admins can connect.
+- A product shows up once you have opened it at least once; products added later appear within about an hour.
+- Connecting creates an API key named `Claude · …` in each connected product. Deleting that key in a product's settings removes the product from the connection.
+
+Claude Code can connect the same way:
+
+```bash
+claude mcp add --transport http salesforge https://mcp.salesforge.ai/mcp
+```
+
+Then run `/mcp` in Claude Code to sign in. The API-key headers below keep working for any client.
+
+### Claude Desktop (API keys)
 
 Add to your `claude_desktop_config.json`:
 
@@ -46,7 +62,7 @@ Add to your `claude_desktop_config.json`:
 
 Remove header lines for products you don't use. Restart Claude Desktop after saving.
 
-### Claude Code
+### Claude Code (API keys)
 
 ```bash
 claude mcp add salesforge \
@@ -93,7 +109,7 @@ Go to Settings > MCP and add a new server:
 
 ## Multiple Accounts
 
-If you manage multiple accounts (for example, different clients), add separate server entries:
+If you manage multiple accounts (for example, different clients), add separate server entries, each with that account's keys:
 
 ```json
 {
@@ -101,18 +117,20 @@ If you manage multiple accounts (for example, different clients), add separate s
     "salesforge-client-a": {
       "url": "https://mcp.salesforge.ai/mcp",
       "headers": {
-        "Authorization": "Bearer CLIENT_A_KEY"
+        "X-Salesforge-Key": "CLIENT_A_SALESFORGE_KEY"
       }
     },
     "salesforge-client-b": {
       "url": "https://mcp.salesforge.ai/mcp",
       "headers": {
-        "Authorization": "Bearer CLIENT_B_KEY"
+        "X-Salesforge-Key": "CLIENT_B_SALESFORGE_KEY"
       }
     }
   }
 }
 ```
+
+Don't send a product key as `Authorization: Bearer …`: that header carries OAuth access tokens and a key there is rejected.
 
 Each entry gets its own name and API keys. Your AI assistant sees tools from both and you specify which client to work with in your prompts.
 
@@ -154,8 +172,12 @@ Internal rollout order is binding: deploy the Multichannel async-validation cont
 ```
 src/
 ├── index.ts              # stdio entry point
-├── http.ts               # HTTP/SSE transport entry point
+├── http.ts               # HTTP entry point: resource server setup and listen
+├── app.ts                # HTTP routes: /health, resource metadata, /mcp with bearer or header keys
 ├── server.ts             # MCP server setup, tool registration
+├── product-clients.ts    # one upstream client per product key
+├── products.ts           # the products this server has tools for
+├── oauth/                # protected resource: token checks, credentials from auth-api, metadata
 ├── api-client.ts         # HTTP client for upstream APIs
 ├── client.ts             # legacy client
 ├── helpers.ts            # shared utilities
@@ -196,7 +218,41 @@ npm run build
 npm run start:http
 ```
 
-The server listens on port 3000 by default. API keys are passed as headers per request, not as environment variables.
+The server listens on port 3000 by default. API keys are passed as headers per request, not as environment variables. A self-hosted server leaves `OAUTH_ENABLED` unset: it then accepts only the key headers.
+
+## Other environments
+
+The product APIs default to production. A deployment for another environment, such as dev (`mcp-dev.salesforge.ai`), points each one elsewhere:
+
+| Variable | Production default |
+| --- | --- |
+| `SALESFORGE_API_URL` | `https://api.salesforge.ai/public/v2` |
+| `SALESFORGE_MULTICHANNEL_API_URL` | `https://multichannel-api.salesforge.ai/public` |
+| `PRIMEFORGE_API_URL` | `https://api.primeforge.ai/public` |
+| `LEADSFORGE_API_URL` | `https://api.leadsforge.ai/public/v1` |
+| `INFRAFORGE_API_URL` | `https://api.infraforge.ai/public` |
+| `WARMFORGE_API_URL` | `https://api.warmforge.ai/public/v1` |
+| `MAILFORGE_API_URL` | `https://api.mailforge.ai/public` |
+
+`buildspec.yml` builds the dev image from `develop`, and `buildspec-prod.yml` the production one from `main`.
+
+## OAuth (hosted deployment)
+
+With `OAUTH_ENABLED=true` the server is an OAuth protected resource (RFC 9728) whose authorization server is auth-api at `https://auth.salesforge.ai` (MCP authorization spec 2025-11-25). Clients find it through the `401` challenge on `/mcp` and `/.well-known/oauth-protected-resource/mcp`, then register, sign in and get tokens there; this server has no OAuth endpoints and no database of its own.
+
+- **Tokens:** each request's access token is an RFC 9068 JWT, checked here against the issuer's JWKS: issuer, `aud` equal to this server's `/mcp` URL, expiry and type.
+- **Product access:** the server asks auth-api's internal credentials route for the API keys of the token's grant (one managed key per product the user connected), caches them for a minute, and uses them for that connection's tool calls. The access token is never sent to the products. A product's `401` on a managed key is reported back to auth-api, which stops handing that key out.
+- **Header keys:** `X-*-Key` headers win whenever present, so API-key clients and self-hosted servers work as before.
+
+| Variable | Purpose |
+| --- | --- |
+| `OAUTH_ENABLED` | `true` serves the protected resource metadata and accepts bearer tokens |
+| `PUBLIC_BASE_URL` | Public origin, e.g. `https://mcp.salesforge.ai`; tokens must be for `<PUBLIC_BASE_URL>/mcp` |
+| `OAUTH_ISSUER` | The authorization server, e.g. `https://auth.salesforge.ai` |
+| `OAUTH_JWKS_URL` | Optional; defaults to `<OAUTH_ISSUER>/.well-known/jwks.json` |
+| `OAUTH_CREDENTIALS_URL` | auth-api's base URL for its internal credentials routes, e.g. its in-cluster service |
+| `OAUTH_CREDENTIALS_SECRET` | This resource's secret in auth-api's `OAUTH_RESOURCES` |
+| `OAUTH_SCOPES` | Optional; the scopes advertised in the challenge and metadata, default `full_access` |
 
 The HTTP endpoint uses stateless MCP POST requests. Standalone SSE streams are not offered: `GET /mcp` (and `HEAD`) returns `405 Method Not Allowed` before allocating an MCP server. Per-request servers and transports are closed after handling, on failures, and when clients disconnect before the response finishes.
 

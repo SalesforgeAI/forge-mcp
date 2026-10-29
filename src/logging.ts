@@ -39,13 +39,17 @@ export function errorFields(error: unknown): Record<string, unknown> {
 
 let activeRequests = 0;
 
+const knownRoutes = new Set([
+  "/health", "/mcp", "/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp",
+]);
+
 /** Trace requests before body parsing, including stalled bodies and disconnected clients. */
 export const requestLogging: RequestHandler = (req, res, next) => {
   const requestId = randomUUID();
   context.run({ requestId }, () => {
     const started = performance.now();
     // Only known routes are recorded; arbitrary paths may contain personal data.
-    const route = req.path === "/health" || req.path === "/mcp" ? req.path : "other";
+    const route = knownRoutes.has(req.path) ? req.path : "other";
     const fields = { requestId, method: req.method, route };
     activeRequests++;
     res.setHeader("X-Request-Id", requestId);

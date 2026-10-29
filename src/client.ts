@@ -1,7 +1,9 @@
+import { isRevokedKey, revokedKeyMessage } from "./api-client.js";
 import { loggedFetch } from "./logging.js";
 
-const CORE_BASE_URL = "https://api.salesforge.ai/public/v2";
-const MULTICHANNEL_BASE_URL = "https://multichannel-api.salesforge.ai/public";
+// Production unless the deployment points at another environment, such as dev.
+const CORE_BASE_URL = process.env.SALESFORGE_API_URL?.trim() || "https://api.salesforge.ai/public/v2";
+const MULTICHANNEL_BASE_URL = process.env.SALESFORGE_MULTICHANNEL_API_URL?.trim() || "https://multichannel-api.salesforge.ai/public";
 
 export type QueryValue = string | readonly string[];
 export type QueryParams = Record<string, QueryValue>;
@@ -18,12 +20,19 @@ export class SalesforgeApiError extends Error {
 
 export class SalesforgeClient {
   private apiKey: string;
+  private onUnauthorized?: () => void;
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, onUnauthorized?: () => void) {
     if (!apiKey) {
       throw new Error("SALESFORGE_API_KEY is required");
     }
     this.apiKey = apiKey;
+    this.onUnauthorized = onUnauthorized;
+  }
+
+  /** Multichannel validates the same Salesforge key, so a 401 from either service means the key is gone. */
+  private rejectRevokedKey(resp: Response): void {
+    if (isRevokedKey(resp, this.onUnauthorized)) throw new SalesforgeApiError(401, revokedKeyMessage("Salesforge"));
   }
 
   async coreGet<T>(path: string, query?: QueryParams): Promise<T> {
@@ -74,6 +83,7 @@ export class SalesforgeClient {
       method: "GET",
       headers: { Authorization: this.apiKey, "X-Source": "forge-mcp" },
     }, async (resp) => {
+      this.rejectRevokedKey(resp);
       if (!resp.ok) {
         const body = await resp.text();
         throw new SalesforgeApiError(resp.status, body);
@@ -122,6 +132,7 @@ export class SalesforgeClient {
     }
 
     return loggedFetch("Salesforge", url, init, async (resp) => {
+      this.rejectRevokedKey(resp);
       if (!resp.ok) {
         const text = await resp.text();
         throw new SalesforgeApiError(resp.status, text);

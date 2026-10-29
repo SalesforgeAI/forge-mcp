@@ -11,11 +11,29 @@ export class ApiError extends Error {
   }
 }
 
+/** The error a tool shows when a product rejects a managed key, instead of the product's raw 401 body. */
+export function revokedKeyMessage(product: string): string {
+  return `${product} no longer accepts this connection's API key; it may have been deleted in ${product} settings. ` +
+    "Reconnect the Salesforge connector to restore access.";
+}
+
+/**
+ * `onUnauthorized` is set for OAuth connections only: their key is a managed one, so a 401 means the user revoked
+ * it in the product. Reports it and drops the body; the caller then throws with revokedKeyMessage.
+ */
+export function isRevokedKey(resp: Response, onUnauthorized?: () => void): boolean {
+  if (resp.status !== 401 || !onUnauthorized) return false;
+  onUnauthorized();
+  void resp.body?.cancel().catch(() => undefined);
+  return true;
+}
+
 export class ApiClient {
   constructor(
     private apiKey: string,
     private baseUrl: string,
     private product: string,
+    private onUnauthorized?: () => void,
   ) {}
 
   async get<T>(path: string, query?: Record<string, string | string[]>): Promise<T> {
@@ -82,6 +100,7 @@ export class ApiClient {
     }
 
     return loggedFetch(this.product, url, init, async (resp) => {
+      if (isRevokedKey(resp, this.onUnauthorized)) throw new ApiError(401, revokedKeyMessage(this.product), this.product);
       if (!resp.ok) {
         const text = await resp.text();
         throw new ApiError(resp.status, text, this.product);
