@@ -21,7 +21,7 @@ app.use("/mcp", (_req, res, next) => {
   res.setHeader("Access-Control-Expose-Headers", "X-Request-Id");
   res.setHeader(
     "Access-Control-Allow-Headers",
-    "Content-Type, Mcp-Session-Id, mcp-protocol-version, X-Salesforge-Key, X-Primeforge-Key, X-Leadsforge-Key, X-Infraforge-Key, X-Warmforge-Key, X-Mailforge-Key",
+    "Content-Type, Mcp-Session-Id, mcp-protocol-version, X-Salesforge-Key, X-Primeforge-Key, X-Leadsforge-Key, X-Infraforge-Key, X-Warmforge-Key, X-Mailforge-Key, X-Calendio-Key",
   );
   if (_req.method === "OPTIONS") {
     res.status(204).end();
@@ -43,8 +43,9 @@ app.all("/mcp", async (req, res) => {
   const ifKey = req.headers["x-infraforge-key"] as string | undefined;
   const wfKey = req.headers["x-warmforge-key"] as string | undefined;
   const mfKey = req.headers["x-mailforge-key"] as string | undefined;
+  const calKey = req.headers["x-calendio-key"] as string | undefined;
 
-  if (!sfKey && !pfKey && !lfKey && !ifKey && !wfKey && !mfKey) {
+  if (!sfKey && !pfKey && !lfKey && !ifKey && !wfKey && !mfKey && !calKey) {
     res.status(401).json({
       jsonrpc: "2.0",
       error: { code: -32001, message: "At least one product API key header is required" },
@@ -60,6 +61,7 @@ app.all("/mcp", async (req, res) => {
   if (ifKey) clients.infraforge = new ApiClient(ifKey, "https://api.infraforge.ai/public", "InfraForge");
   if (wfKey) clients.warmforge = new ApiClient("Bearer " + wfKey, "https://api.warmforge.ai/public/v1", "WarmForge");
   if (mfKey) clients.mailforge = new ApiClient(mfKey, "https://api.mailforge.ai/public", "MailForge");
+  if (calKey) clients.calendio = new ApiClient("Bearer " + calKey, "https://api.calendio.ai/v1", "Calendio");
 
   let stage = "create_server";
   const started = performance.now();
