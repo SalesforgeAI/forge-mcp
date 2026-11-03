@@ -22,7 +22,7 @@ const mc = "https://multichannel-api.salesforge.ai/public/multichannel/workspace
 const sequenceTree = {
   name: "Tree",
   timezone: "Europe/London",
-  settings: { openTrackingEnabled: true },
+  settings: { openTrackingEnabled: true, oooAutoResumeEnabled: false, oooAutoResumeBufferDays: 0 },
   schedule: { monday: { enabled: true, from: 9, to: 17 } },
   steps: [
     { ref: "intro", type: "action", actionId: 3, variants: [{ metadata: { subject: "Hi", message: "Hello" }, exposureInPercentage: 100, isEnabled: true }] },
@@ -59,6 +59,7 @@ test("SF-9461 Salesforge tools map MCP inputs to public API contracts", async (t
     ["list_dnc_entries", { limit: 50, offset: 100 }, "GET", `${core}/dnc?limit=50&offset=100`],
     ["remove_dnc_entries", { dncs: ["a@example.com", "example.com"] }, "POST", `${core}/dnc/bulk/remove`, { dncs: ["a@example.com", "example.com"] }, 204],
     ["create_sequence_with_steps", sequenceTree, "POST", `${mc}/sequences/tree`, sequenceTree, 201],
+    ["update_sequence_settings", { sequenceId: "7", settings: { oooAutoResumeEnabled: true, oooAutoResumeBufferDays: 5 } }, "PATCH", `${mc}/sequences/7/settings`, { oooAutoResumeEnabled: true, oooAutoResumeBufferDays: 5 }],
   ];
   const listed = (await client.listTools()).tools;
   for (const [name, args, method, url, body, responseStatus = 200] of cases) {
@@ -101,6 +102,9 @@ test("invalid account and contact inputs never reach the API", async (t) => {
     ["create_sequence_with_steps", { name: "Tree", timezone: "UTC", steps: [{ type: "condition", conditionId: 6, branches: { no: [{ type: "action", actionId: 3, waitDays: 1 }] } }] }],
     ["create_sequence_with_steps", { name: "Tree", timezone: "UTC", steps: [{ type: "delay" }] }],
     ["create_sequence_with_steps", { name: "Tree", timezone: "UTC", steps: [{ type: "condition", conditionId: 6, branches: { no: [{ type: "action", actionId: 3, waitInMinutes: -1 }] } }] }],
+    ["create_sequence_with_steps", { name: "Tree", timezone: "UTC", settings: { oooAutoResumeBufferDays: -1 }, steps: [{ type: "action", actionId: 3 }] }],
+    ["create_sequence_with_steps", { name: "Tree", timezone: "UTC", settings: { oooAutoResumeBufferDays: 1.5 }, steps: [{ type: "action", actionId: 3 }] }],
+    ["create_sequence_with_steps", { name: "Tree", timezone: "UTC", settings: { oooAutoResumeEnabled: "false" }, steps: [{ type: "action", actionId: 3 }] }],
   ];
   for (const [name, args] of cases) {
     const result = await client.callTool({ name, arguments: { workspaceId: "w1", ...args } });

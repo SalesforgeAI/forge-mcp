@@ -46,6 +46,8 @@ const sequenceSettings = z.strictObject({
   trackOpportunitiesEnabled: z.boolean().optional(),
   opportunitiesValue: z.number().min(0).optional(),
   bounceShieldEnabled: z.boolean().optional(),
+  oooAutoResumeEnabled: z.boolean().optional().describe("Resume out of office leads automatically after their return date (default true)"),
+  oooAutoResumeBufferDays: z.number().int().min(0).optional().describe("Days after the return date before an out of office lead resumes (default 3)"),
 });
 
 const sequenceStep = z.strictObject({
@@ -292,7 +294,7 @@ export function registerSequenceTools(server: McpServer, client: SalesforgeClien
   server.registerTool(
     "update_sequence_settings",
     {
-      description: "Update settings for a multichannel sequence",
+      description: "Update settings for a multichannel sequence. Takes the same fields as the create_sequence_with_steps settings. Turning oooAutoResumeEnabled off cancels the scheduled resumes of out of office leads; changing oooAutoResumeBufferDays recalculates them.",
       inputSchema: {
         workspaceId: z.string().describe("Workspace ID"),
         sequenceId: z.string().describe("Sequence ID"),
