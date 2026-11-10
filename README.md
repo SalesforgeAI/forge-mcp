@@ -257,3 +257,9 @@ These tools require [salesforge-api #2836](https://github.com/SalesforgeAI/sales
 | `update_sender_profile` | Attach a standalone LinkedIn account using `updates.linkedinAccountId`. The profile must have no LinkedIn account, or already have that same account. Replacing a different account returns 409. Omitted/null `linkedinAccountId` leaves the association unchanged; omitted `mailboxIds` preserves mailboxes. |
 
 There is no independent LinkedIn deletion tool or email disconnect tool. The existing `delete_sender_profile` tool also deletes its attached LinkedIn account.
+
+## LinkedIn cookie login
+
+This requires [multichannel-api #1350](https://github.com/SalesforgeAI/multichannel-api/pull/1350) (SF-11040). The matching API change must be deployed before cookies can be used.
+
+`connect_linkedin_account` and `reconnect_linkedin_account` also accept `cookies` from a browser logged in to LinkedIn, instead of email and password. The cookies must include `li_at`; `li_a` is used when present (Sales Navigator). No OTP is asked, and the email is read from LinkedIn. Send `userAgent` of the same browser with them. A reconnect with cookies must be logged in to the same LinkedIn account and takes no email or password.
