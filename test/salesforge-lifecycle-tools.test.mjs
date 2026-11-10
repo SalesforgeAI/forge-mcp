@@ -37,6 +37,7 @@ test("SF-10349 lifecycle tools map MCP inputs to public API contracts", async (t
     ["update_mailbox_connection_settings", { mailboxId: "m1", smtp, imap: smtp }, "PATCH", `${core}/mailboxes/m1/connection-settings`, { smtp, imap: smtp }],
     ["disconnect_linkedin_account", { linkedinAccountId: 42 }, "POST", `${mc}/linkedin/accounts/42/disconnect`, undefined, 204],
     ["reconnect_linkedin_account", { linkedinAccountId: 42, password: "new-secret" }, "POST", `${mc}/linkedin/accounts/42/reconnect`, { password: "new-secret" }],
+    ["reconnect_linkedin_account", { linkedinAccountId: 42, cookies: [{ name: "li_at", value: "test-li-at" }], userAgent: "test-browser/1.0" }, "POST", `${mc}/linkedin/accounts/42/reconnect`, { cookies: [{ name: "li_at", value: "test-li-at" }], userAgent: "test-browser/1.0" }],
   ];
   const listed = (await client.listTools()).tools;
   for (const [name, args, method, url, body, responseStatus = 200] of cases) {
@@ -67,6 +68,8 @@ test("invalid lifecycle inputs never reach the API", async (t) => {
     ["update_mailbox_connection_settings", { mailboxId: "m1", smtp: { ...smtp, port: 65536 } }],
     ["update_mailbox_connection_settings", { mailboxId: "m1", smtp: { password: "only-password" } }],
     ["reconnect_linkedin_account", { linkedinAccountId: 42 }],
+    ["reconnect_linkedin_account", { linkedinAccountId: 42, password: "secret", cookies: [{ name: "li_at", value: "test-li-at" }] }],
+    ["reconnect_linkedin_account", { linkedinAccountId: 42, email: "a@example.com", cookies: [{ name: "li_at", value: "test-li-at" }] }],
   ];
   for (const [name, args] of cases) {
     const result = await client.callTool({ name, arguments: { workspaceId: "w1", ...args } });
