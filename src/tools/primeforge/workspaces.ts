@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { ApiClient } from "../../api-client.js";
-import { handleTool, buildQuery } from "../../helpers.js";
+import { handleTool, buildQuery, enc } from "../../helpers.js";
 
 export function registerPrimeforgeWorkspaceTools(server: McpServer, client: ApiClient) {
   server.registerTool(
@@ -53,14 +53,19 @@ export function registerPrimeforgeWorkspaceTools(server: McpServer, client: ApiC
   server.registerTool(
     "primeforge_set_domain_forwarding",
     {
-      description: "Set domain forwarding for a PrimeForge workspace",
+      description:
+        "Set the forwarding URL for domains in a PrimeForge workspace, so visitors to those domains are sent to that URL. " +
+        "The domains must belong to the given workspace: IDs from other workspaces are skipped, and the call fails if none of them match.",
       inputSchema: {
-        workspaceId: z.string().describe("Workspace ID"),
-        forwardToDomain: z.string().describe("Domain to forward to"),
+        workspaceId: z.string().describe("Workspace ID the domains belong to"),
+        domainIds: z.array(z.string().min(1)).min(1).describe("Domain IDs (as returned by primeforge_list_domains), not domain names"),
+        forwardingUrl: z.string().url().optional().describe("URL to forward the domains to, e.g. https://example.com"),
       },
     },
-    ({ workspaceId, forwardToDomain }) =>
-      handleTool(() => client.post(`/workspaces/${workspaceId}/domains/forwarding`, { forwardToDomain })),
+    ({ workspaceId, domainIds, forwardingUrl }) =>
+      handleTool(() =>
+        client.post(`/workspaces/${enc(workspaceId)}/domains/forwarding`, { domainIds, forwardingUrl }),
+      ),
   );
 
   server.registerTool(

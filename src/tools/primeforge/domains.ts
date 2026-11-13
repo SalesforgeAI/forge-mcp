@@ -88,9 +88,9 @@ export function registerPrimeforgeDomainTools(server: McpServer, client: ApiClie
     {
       description: "Bulk update DNS records across PrimeForge domains",
       inputSchema: {
-        domains: z.array(z.string()).describe("Domain names"),
+        domains: z.array(z.string().min(1)).min(1).describe("Domain IDs (as returned by primeforge_list_domains), not domain names"),
         dmarcEmail: z.string().optional().describe("DMARC email"),
-        forwardToDomain: z.string().optional().describe("Forwarding domain"),
+        forwardToDomain: z.string().optional().describe("URL to forward the domains to, e.g. https://example.com"),
       },
     },
     ({ ...body }) => handleTool(() => client.put("/domains/bulk-dns", body)),
@@ -107,9 +107,8 @@ export function registerPrimeforgeDomainTools(server: McpServer, client: ApiClie
           firstName: z.string(),
           lastName: z.string(),
           username: z.string(),
-          signature: z.string(),
-          profilePictureUrl: z.string(),
-          forwardingEmail: z.string().optional(),
+          signature: z.string().optional(),
+          profilePictureUrl: z.string().optional(),
         })).describe("Mailboxes to create"),
       },
     },
