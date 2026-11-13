@@ -6,7 +6,7 @@ Built on the [Model Context Protocol](https://modelcontextprotocol.io), works wi
 
 ## Supported Products
 
-**Salesforge** (83 tools) - Account credits and subscription, workspaces, contacts, sequences and subsequences, lead progress, mailboxes, LinkedIn accounts, sender profiles, tags, enrollment preflight and confirmation, webhooks, email validation, do-not-contact lists
+**Salesforge** (86 tools) - Account credits and subscription, workspaces, contacts, sequences and subsequences, lead progress, mailboxes, LinkedIn accounts, sender profiles, contact and mailbox tags, enrollment preflight and confirmation, webhooks, email validation, do-not-contact lists
 
 **Primeforge** (23 tools) - Workspaces, domains, mailboxes, DNS management, prewarmed mailboxes, bulk mailbox lookup
 
@@ -172,7 +172,7 @@ src/
     ├── branches.ts       # sequence branches
     ├── enrollments.ts    # contact enrollment
     ├── linkedin.ts       # LinkedIn connection and session management
-    ├── tags.ts           # workspace tag discovery
+    ├── tags.ts           # contact and mailbox tag discovery
     ├── sender-profiles.ts# sender profile management
     ├── validations.ts    # email validation
     ├── webhooks.ts       # webhook management
@@ -235,11 +235,11 @@ These tools require the public API additions in [multichannel-api #1068](https:/
 
 | Tools | Behavior |
 | --- | --- |
-| `create_sender_profile`, `bulk_create_sender_profiles` | Create profiles with optional existing mailbox IDs and a LinkedIn account ID. Bulk creation accepts 1–100 entries and reports each result independently. |
+| `create_sender_profile`, `bulk_create_sender_profiles` | Create profiles with optional existing mailboxes (`mailboxFilter`, see below) and a LinkedIn account ID. Bulk creation accepts 1–100 entries and reports each result independently. |
 | `connect_linkedin_account` | Connect LinkedIn; set `skipSenderProfile: true` to skip automatic draft sender-profile creation. |
 | `get_linkedin_account`, `submit_linkedin_account_otp` | Check connection state and answer authentication challenges. |
 | `delete_contact`, `bulk_delete_contacts` | Delete one contact or up to 1,000 contacts. Bulk deletion ignores IDs outside the workspace. |
-| `list_tags` | Discover tag IDs and names with pagination, name search, and optional case sensitivity. |
+| `list_tags` | Discover contact tag IDs and names with pagination, name search, and optional case sensitivity. Mailbox tags are listed by `list_mailbox_tags`. |
 
 To attach a standalone LinkedIn account, use `create_sender_profile` with its `linkedinAccountId`. The account must belong to the workspace and must not already be attached to another sender profile.
 
@@ -254,9 +254,24 @@ These tools require [salesforge-api #2836](https://github.com/SalesforgeAI/sales
 | `disconnect_linkedin_account`, `reconnect_linkedin_account` | Manage the session while retaining account identity, history, limits, and the sender-profile association. |
 | `delete_mailbox` | Remove the mailbox from Salesforge without deleting the email account at its provider. |
 | `update_mailbox_connection_settings` | Update SMTP/IMAP settings even while connected. Supply complete `host`, `port`, `username`, and `password` settings for at least one protocol. Omitted protocols remain unchanged. OAuth mailboxes are unsupported. |
-| `update_sender_profile` | Attach a standalone LinkedIn account using `updates.linkedinAccountId`. The profile must have no LinkedIn account, or already have that same account. Replacing a different account returns 409. Omitted/null `linkedinAccountId` leaves the association unchanged; omitted `mailboxIds` preserves mailboxes. |
+| `update_sender_profile` | Attach a standalone LinkedIn account using `updates.linkedinAccountId`. The profile must have no LinkedIn account, or already have that same account. Replacing a different account returns 409. Omitted/null `linkedinAccountId` leaves the association unchanged; omitted `mailboxFilter` preserves mailboxes. |
 
 There is no independent LinkedIn deletion tool or email disconnect tool. The existing `delete_sender_profile` tool also deletes its attached LinkedIn account.
+
+## Mailbox tags and mailbox selection for sender profiles
+
+This requires the SF-11162 changes in salesforge-api (public `GET /workspaces/{id}/mailbox-tags`) and multichannel-api (`mailboxFilter` and `mode` on sender profiles). Both must be deployed before releasing these tools.
+
+| Tools | Behavior |
+| --- | --- |
+| `list_mailbox_tags` | Find mailbox tags by exact `name` (case-insensitive), `nameContains`, `ids` or `mailboxIds`. Each tag has `mailboxCount`. |
+| `list_mailboxes` | Filter by `statuses`, `tagIds` and `notTagIds`. |
+| `create_sender_profile`, `bulk_create_sender_profiles`, `update_sender_profile` | Select mailboxes on the server with `mailboxFilter`: `ids`, `tagIds`, `limit` (1–1000) and `sampling` (`normal` or `random`; `random` requires `limit`). A mailbox must match every field that is set. `mailboxIds` is no longer accepted. |
+| `update_sender_profile` | `mode: "replace"` (default) makes the selected mailboxes the only ones. `mode: "add"` keeps the attached mailboxes and adds new ones. |
+
+These tools return profiles without the `mailboxes` list. `mailboxCount` is the number attached; `addedMailboxCount` is the number added in add mode.
+
+Example, add 500 random Azure-tagged mailboxes to a profile: call `list_mailbox_tags` with `name: "Azure"`, then `update_sender_profile` with `mode: "add"` and `updates.mailboxFilter: { tagIds: [tagId], limit: 500, sampling: "random" }`. Each call samples on its own, so two profiles can get the same mailbox.
 
 ## LinkedIn cookie login
 
