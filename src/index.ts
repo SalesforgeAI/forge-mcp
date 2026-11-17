@@ -26,14 +26,17 @@ function buildClients(): ProductClients {
   const mfKey = process.env.MAILFORGE_API_KEY;
   if (mfKey) clients.mailforge = new ApiClient(mfKey, "https://api.mailforge.ai/public", "MailForge");
 
+  const calKey = process.env.CALENDIO_API_KEY;
+  if (calKey) clients.calendio = new ApiClient("Bearer " + calKey, "https://api.calendio.ai/v1", "Calendio");
+
   return clients;
 }
 
 async function main() {
   const clients = buildClients();
 
-  if (!clients.salesforge && !clients.primeforge && !clients.leadsforge && !clients.infraforge && !clients.warmforge && !clients.mailforge) {
-    console.error("Error: At least one API key is required. Set SALESFORGE_API_KEY, PRIMEFORGE_API_KEY, LEADSFORGE_API_KEY, INFRAFORGE_API_KEY, WARMFORGE_API_KEY, or MAILFORGE_API_KEY.");
+  if (!clients.salesforge && !clients.primeforge && !clients.leadsforge && !clients.infraforge && !clients.warmforge && !clients.mailforge && !clients.calendio) {
+    console.error("Error: At least one API key is required. Set SALESFORGE_API_KEY, PRIMEFORGE_API_KEY, LEADSFORGE_API_KEY, INFRAFORGE_API_KEY, WARMFORGE_API_KEY, MAILFORGE_API_KEY, or CALENDIO_API_KEY.");
     process.exit(1);
   }
 

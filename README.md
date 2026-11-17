@@ -1,6 +1,6 @@
 # Forge MCP Server
 
-A remote MCP server that connects AI assistants to the full Salesforge product suite: Salesforge, Primeforge, Leadsforge, Infraforge, Warmforge, and Mailforge.
+A remote MCP server that connects AI assistants to the full Salesforge product suite: Salesforge, Primeforge, Leadsforge, Infraforge, Warmforge, Mailforge, and Calendio.
 
 Built on the [Model Context Protocol](https://modelcontextprotocol.io), works with Claude Desktop, Claude Code, Cursor, Windsurf, and any MCP-compatible client.
 
@@ -17,6 +17,8 @@ Built on the [Model Context Protocol](https://modelcontextprotocol.io), works wi
 **Warmforge** (15 tools) - Workspaces, mailboxes, warmup stats, placement tests, latest mailbox placement results
 
 **Mailforge** (23 tools) - Workspaces, domains, mailboxes, DNS management, domain availability, auto-renewal, domain masking, forwarding
+
+**Calendio** (18 tools) - Personal booking links for leads, meeting outcomes, meeting links, availabilities, link groups, calendar connections, date overrides, webhooks
 
 Only provide API keys for the products you use. Tools for unconfigured products won't appear.
 
@@ -37,7 +39,8 @@ Add to your `claude_desktop_config.json`:
         "X-Leadsforge-Key": "YOUR_LEADSFORGE_API_KEY",
         "X-Infraforge-Key": "YOUR_INFRAFORGE_API_KEY",
         "X-Warmforge-Key": "YOUR_WARMFORGE_API_KEY",
-        "X-Mailforge-Key": "YOUR_MAILFORGE_API_KEY"
+        "X-Mailforge-Key": "YOUR_MAILFORGE_API_KEY",
+        "X-Calendio-Key": "YOUR_CALENDIO_API_KEY"
       }
     }
   }
@@ -57,7 +60,8 @@ claude mcp add salesforge \
   --header "X-Leadsforge-Key: YOUR_LEADSFORGE_API_KEY" \
   --header "X-Infraforge-Key: YOUR_INFRAFORGE_API_KEY" \
   --header "X-Warmforge-Key: YOUR_WARMFORGE_API_KEY" \
-  --header "X-Mailforge-Key: YOUR_MAILFORGE_API_KEY"
+  --header "X-Mailforge-Key: YOUR_MAILFORGE_API_KEY" \
+  --header "X-Calendio-Key: YOUR_CALENDIO_API_KEY"
 ```
 
 ### Cursor
@@ -79,6 +83,7 @@ Go to Settings > MCP and add a new server:
 | Infraforge | [app.infraforge.ai](https://app.infraforge.ai) > Settings > API |
 | Warmforge | [app.warmforge.ai](https://app.warmforge.ai) > Settings > API |
 | Mailforge | [app.mailforge.ai](https://app.mailforge.ai) > Settings > API |
+| Calendio | [app.calendio.ai](https://app.calendio.ai) > Integrations > Developers (admins only) |
 
 ## Authentication Headers
 
@@ -90,6 +95,7 @@ Go to Settings > MCP and add a new server:
 | Infraforge | `X-Infraforge-Key` | `YOUR_API_KEY` |
 | Warmforge | `X-Warmforge-Key` | `YOUR_API_KEY` |
 | Mailforge | `X-Mailforge-Key` | `YOUR_API_KEY` |
+| Calendio | `X-Calendio-Key` | `cal_...` |
 
 ## Multiple Accounts
 
@@ -136,6 +142,8 @@ After setup, try asking your AI assistant:
 - "Show which Warmforge mailboxes have 100% latest placement results"
 - "List my Mailforge domains"
 - "Check if example.com is available on Mailforge"
+- "Give every contact in sequence X their own Calendio booking link"
+- "Which Calendio meetings still need an outcome?"
 
 ## Asynchronous Email Validation
 
@@ -183,7 +191,8 @@ src/
     ├── leadsforge/       # search, enrichment, lookalike, followers, local business tools
     ├── infraforge/       # domain, mailbox, credit tools
     ├── warmforge/        # workspace, mailbox, placement test tools
-    └── mailforge/        # workspace, domain, mailbox tools
+    ├── mailforge/        # workspace, domain, mailbox tools
+    └── calendio/         # lead link, meeting link, link group, webhook tools
 ```
 
 ## Self-Hosting

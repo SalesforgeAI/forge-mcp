@@ -39,6 +39,10 @@ import { registerWarmforgeWorkspaceTools } from "./tools/warmforge/workspaces.js
 import { registerMailforgeWorkspaceTools } from "./tools/mailforge/workspaces.js";
 import { registerMailforgeDomainTools } from "./tools/mailforge/domains.js";
 import { registerMailforgeMailboxTools } from "./tools/mailforge/mailboxes.js";
+import { registerCalendioLeadLinkTools } from "./tools/calendio/lead-links.js";
+import { registerCalendioMeetingLinkTools } from "./tools/calendio/meeting-links.js";
+import { registerCalendioLinkGroupTools } from "./tools/calendio/link-groups.js";
+import { registerCalendioWebhookTools } from "./tools/calendio/webhooks.js";
 
 export interface ProductClients {
   salesforge?: SalesforgeClient;
@@ -47,6 +51,7 @@ export interface ProductClients {
   infraforge?: ApiClient;
   warmforge?: ApiClient;
   mailforge?: ApiClient;
+  calendio?: ApiClient;
 }
 
 export function createServer(clients: ProductClients): McpServer {
@@ -115,6 +120,14 @@ export function createServer(clients: ProductClients): McpServer {
     registerMailforgeWorkspaceTools(server, c);
     registerMailforgeDomainTools(server, c);
     registerMailforgeMailboxTools(server, c);
+  }
+
+  if (clients.calendio) {
+    const c = clients.calendio;
+    registerCalendioLeadLinkTools(server, c);
+    registerCalendioMeetingLinkTools(server, c);
+    registerCalendioLinkGroupTools(server, c);
+    registerCalendioWebhookTools(server, c);
   }
 
   return server;
