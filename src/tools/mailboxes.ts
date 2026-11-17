@@ -1,23 +1,36 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { SalesforgeClient } from "../client.js";
+import { SalesforgeClient, type QueryParams } from "../client.js";
 import { handleTool, enc, buildQuery } from "../helpers.js";
+
+const MAILBOX_STATUSES = ["active", "access_lost", "pending"] as const;
 
 export function registerMailboxTools(server: McpServer, client: SalesforgeClient) {
   server.registerTool(
     "list_mailboxes",
     {
-      description: "List mailboxes in a workspace with optional filters",
-      inputSchema: {
+      description:
+        "List mailboxes in a workspace with optional filters. Find mailbox tag IDs with list_mailbox_tags. " +
+        "To attach many mailboxes to a sender profile (for example by tag, or a random sample), do not page through " +
+        "mailbox IDs here: pass mailboxFilter to create_sender_profile, bulk_create_sender_profiles or " +
+        "update_sender_profile so the server selects them.",
+      inputSchema: z.object({
         workspaceId: z.string().describe("Workspace ID"),
         limit: z.number().optional().describe("Max results per page"),
         offset: z.number().optional().describe("Offset for pagination"),
         search: z.string().optional().describe("Search by mailbox email"),
-        status: z.string().optional().describe("Filter by status"),
-      },
+        statuses: z.array(z.enum(MAILBOX_STATUSES)).optional().describe("Only mailboxes with one of these statuses"),
+        tagIds: z.array(z.string().min(1)).optional().describe("Only mailboxes with at least one of these mailbox tag IDs"),
+        notTagIds: z.array(z.string().min(1)).optional().describe("Exclude mailboxes with any of these mailbox tag IDs"),
+      }).strict(),
     },
-    ({ workspaceId, ...opts }) =>
-      handleTool(() => client.coreGet(`/workspaces/${enc(workspaceId)}/mailboxes`, buildQuery(opts))),
+    ({ workspaceId, statuses, tagIds, notTagIds, ...opts }) => {
+      const query: QueryParams = buildQuery(opts);
+      if (statuses?.length) query["statuses[]"] = statuses;
+      if (tagIds?.length) query["tag_ids[]"] = tagIds;
+      if (notTagIds?.length) query["not_tag_ids[]"] = notTagIds;
+      return handleTool(() => client.coreGet(`/workspaces/${enc(workspaceId)}/mailboxes`, query));
+    },
   );
 
   server.registerTool(
