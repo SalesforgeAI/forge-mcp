@@ -37,13 +37,6 @@ test("after three retries the 429 tells the assistant to wait", async (t) => {
   assert.equal(fetchMock.mock.callCount(), 4);
 });
 
-test("a wait longer than the cap is not spent in the client", async (t) => {
-  const fetchMock = t.mock.method(globalThis, "fetch", async () => limited("3600"));
-
-  await assert.rejects(new SalesforgeClient("test-api-key").coreGet("/workspaces/w1/contacts"), /Wait 3600 seconds/);
-  assert.equal(fetchMock.mock.callCount(), 1);
-});
-
 test("without Retry-After the client backs off before retrying", async (t) => {
   const responses = [limited(undefined), new Response('{"total":3}', { status: 200 })];
   t.mock.method(globalThis, "fetch", async () => responses.shift());
@@ -66,17 +59,18 @@ test("Retry-After is read as seconds or an HTTP date", () => {
   assert.equal(parseRetryAfter("-1", now), undefined);
 });
 
-test("a tool that stays rate limited returns the wait advice as its error", async (t) => {
+test("a wait longer than the cap is not spent in the client: the tool returns the wait advice", async (t) => {
   const server = createServer({ salesforge: new SalesforgeClient("test-api-key") });
   const client = new Client({ name: "test", version: "1" });
   const [a, b] = InMemoryTransport.createLinkedPair();
   await server.connect(a);
   await client.connect(b);
   t.after(async () => { await client.close(); await server.close(); });
-  t.mock.method(globalThis, "fetch", async () => limited("30"));
+  const fetchMock = t.mock.method(globalThis, "fetch", async () => limited("30"));
 
   const result = await client.callTool({ name: "list_tags", arguments: { workspaceId: "w1" } });
 
   assert.equal(result.isError, true);
   assert.match(result.content[0].text, /^Error: Salesforge API error 429: this account hit its Salesforge API rate limit\. Wait 30 seconds/);
+  assert.equal(fetchMock.mock.callCount(), 1);
 });
