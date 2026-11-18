@@ -96,6 +96,47 @@ export function registerThreadTools(server: McpServer, client: SalesforgeClient)
       ),
   );
 
+  const linkedinMessage = {
+    workspaceId: z.string().min(1).describe("Workspace ID"),
+    threadId: z.string().min(1).describe("Thread ID (from list_primebox_threads response)"),
+    messageId: z.string().min(1).describe("LinkedIn message ID (from get_thread LinkedIn messages)"),
+  };
+  const linkedinAttachmentsPath = (workspaceId: string, threadId: string, messageId: string) =>
+    `/workspaces/${enc(workspaceId)}/threads/${enc(threadId)}/linkedin/messages/${enc(messageId)}/attachments`;
+
+  server.registerTool(
+    "download_linkedin_attachments",
+    {
+      description:
+        "Download all attachments from a LinkedIn message as a ZIP (returns content-type and base64-encoded data). " +
+        "Use get_thread first to find LinkedIn messages that have attachments.",
+      inputSchema: linkedinMessage,
+    },
+    ({ workspaceId, threadId, messageId }) =>
+      handleTool(async () => {
+        const file = await client.coreGetRaw(linkedinAttachmentsPath(workspaceId, threadId, messageId));
+        // The API answers 204 with no body when the message has no attachments.
+        return file.data ? file : { message: "This LinkedIn message has no attachments" };
+      }),
+  );
+
+  server.registerTool(
+    "download_linkedin_attachment",
+    {
+      description:
+        "Download a single LinkedIn message attachment by attachment ID (returns content-type and base64-encoded data). " +
+        "Get the attachment ID from the attachments of a LinkedIn message in get_thread.",
+      inputSchema: {
+        ...linkedinMessage,
+        attachmentId: z.string().min(1).describe("LinkedIn attachment ID (from get_thread LinkedIn message attachments)"),
+      },
+    },
+    ({ workspaceId, threadId, messageId, attachmentId }) =>
+      handleTool(() =>
+        client.coreGetRaw(`${linkedinAttachmentsPath(workspaceId, threadId, messageId)}/${enc(attachmentId)}`),
+      ),
+  );
+
   server.registerTool(
     "list_primebox_labels",
     {

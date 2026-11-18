@@ -6,7 +6,7 @@ Built on the [Model Context Protocol](https://modelcontextprotocol.io), works wi
 
 ## Supported Products
 
-**Salesforge** (78 tools) - Account credits and subscription, workspaces, contacts, sequences and subsequences, lead progress, mailboxes, LinkedIn accounts, sender profiles, tags, enrollment preflight and confirmation, webhooks, email validation, do-not-contact lists
+**Salesforge** (84 tools) - Account credits and subscription, workspaces, contacts, sequences and subsequences, lead progress, mailboxes, Primebox email and LinkedIn replies with attachments, LinkedIn accounts, sender profiles, tags, enrollment preflight and confirmation, webhooks, email validation, do-not-contact lists
 
 **Primeforge** (23 tools) - Workspaces, domains, mailboxes, DNS management, prewarmed mailboxes, bulk mailbox lookup
 
@@ -228,6 +228,8 @@ MIT
 Use `get_thread` to read the conversation, then call `reply_to_linkedin_thread` with `workspaceId`, `threadId`, the sending LinkedIn `accountId` from the thread's LinkedIn messages, and `message`. LinkedIn-only threads do not require a mailbox ID. The tool calls the existing Salesforge public API and returns the created LinkedIn message.
 
 Optional `attachments` accept `filename`, `contentBase64`, and optional `contentType`. For an attachment-only reply, pass an empty `message` and at least one attachment. The API validates supported file types and size limits.
+
+To read files a contact sent on LinkedIn, take the message `id` and attachment `id` values from `get_thread`. `download_linkedin_attachment` returns one file, and `download_linkedin_attachments` returns all files of a message as a ZIP. Both return the content type and base64-encoded data.
 
 ## Salesforge account and contact management
 
