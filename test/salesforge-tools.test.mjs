@@ -51,8 +51,12 @@ test("SF-9461 Salesforge tools map MCP inputs to public API contracts", async (t
     ["delete_contact", { contactId: "c/1" }, "DELETE", `${core}/contacts/c%2F1`, undefined, 204],
     ["bulk_delete_contacts", { contactIds: ["c1", "c2"] }, "POST", `${core}/contacts/bulk-delete`, { contactIds: ["c1", "c2"] }, 204],
     ["list_tags", { limit: 20, offset: 0, search: "A & B", caseSensitive: false }, "GET", `${core}/tags?limit=20&offset=0&search=A+%26+B&caseSensitive=false`],
-    ["create_sender_profile", { name: "Sender", mailboxIds: ["m1"], linkedinAccountId: 42 }, "POST", `${mc}/sender-profiles`, { name: "Sender", mailboxIds: ["m1"], linkedinAccountId: 42 }],
-    ["bulk_create_sender_profiles", { profiles: [{ name: "Sender" }] }, "POST", `${mc}/sender-profiles/bulk`, { profiles: [{ name: "Sender" }] }],
+    ["list_mailbox_tags", { name: "Azure", nameContains: "A & B", ids: ["t1", "t2"], mailboxIds: ["m1"], limit: 50, offset: 0 }, "GET", `${core}/mailbox-tags?name=Azure&nameContains=A+%26+B&limit=50&offset=0&ids%5B%5D=t1&ids%5B%5D=t2&mailbox_ids%5B%5D=m1`],
+    ["list_mailboxes", { limit: 10, search: "a@", statuses: ["active", "pending"], tagIds: ["t1"], notTagIds: ["t2"] }, "GET", `${core}/mailboxes?limit=10&search=a%40&statuses%5B%5D=active&statuses%5B%5D=pending&tag_ids%5B%5D=t1&not_tag_ids%5B%5D=t2`],
+    ["create_sender_profile", { name: "Sender", mailboxFilter: { ids: ["m1"] }, linkedinAccountId: 42 }, "POST", `${mc}/sender-profiles`, { name: "Sender", mailboxFilter: { ids: ["m1"] }, linkedinAccountId: 42 }],
+    ["bulk_create_sender_profiles", { profiles: [{ name: "Sender" }, { name: "Tagged", mailboxFilter: { tagIds: ["t1"], limit: 500, sampling: "random" } }] }, "POST", `${mc}/sender-profiles/bulk`, { profiles: [{ name: "Sender" }, { name: "Tagged", mailboxFilter: { tagIds: ["t1"], limit: 500, sampling: "random" } }] }],
+    ["update_sender_profile", { senderProfileId: "9", mode: "add", updates: { mailboxFilter: { tagIds: ["t1"], limit: 500, sampling: "random" } } }, "PATCH", `${mc}/sender-profiles/9`, { mode: "add", mailboxFilter: { tagIds: ["t1"], limit: 500, sampling: "random" } }],
+    ["update_sender_profile", { senderProfileId: "9", updates: { mailboxFilter: { ids: ["m1"], tagIds: ["t1"], limit: 10, sampling: "normal" } } }, "PATCH", `${mc}/sender-profiles/9`, { mailboxFilter: { ids: ["m1"], tagIds: ["t1"], limit: 10, sampling: "normal" } }],
     ["connect_linkedin_account", { email: "a@example.com", password: "secret", skipSenderProfile: true, proxy: { host: "socks5://proxy.example.com", port: 1080, username: "u", password: "p" } }, "POST", `${mc}/linkedin/accounts`, { email: "a@example.com", password: "secret", skipSenderProfile: true, proxy: { host: "socks5://proxy.example.com", port: 1080, username: "u", password: "p" } }],
     ["connect_linkedin_account", { cookies: [{ name: "li_at", value: "test-li-at", domain: ".www.linkedin.com" }], userAgent: "test-browser/1.0" }, "POST", `${mc}/linkedin/accounts`, { cookies: [{ name: "li_at", value: "test-li-at", domain: ".www.linkedin.com" }], userAgent: "test-browser/1.0" }],
     ["get_linkedin_account", { linkedinAccountId: 42 }, "GET", `${mc}/linkedin/accounts/42`],
@@ -79,6 +83,33 @@ test("SF-9461 Salesforge tools map MCP inputs to public API contracts", async (t
   assert.ok(!listed.some(({ name }) => /^(delete_linkedin_account|disconnect_mailbox)$/.test(name)));
 });
 
+test("SF-11162 sender profile tools return profiles without the mailbox list", async (t) => {
+  const client = await setup(t);
+  const linkedinAccount = { id: 42, name: "Li", status: "active" };
+  const full = { id: 9, name: "Sender", status: "active", mailboxes: [{ id: "m1", address: "a@example.com" }], linkedinAccount, mailboxCount: 1 };
+  const short = { id: 9, name: "Sender", status: "active", linkedinAccount, mailboxCount: 1 };
+  let response;
+  t.mock.method(globalThis, "fetch", async () => new Response(JSON.stringify(response), { status: 200 }));
+  const call = async (name, args) => {
+    const result = await client.callTool({ name, arguments: { workspaceId: "w1", ...args } });
+    assert.ok(!result.isError, JSON.stringify(result));
+    return JSON.parse(result.content[0].text);
+  };
+
+  response = full;
+  assert.deepEqual(await call("create_sender_profile", { name: "Sender" }), short);
+  response = { ...full, mailboxCount: 501, addedMailboxCount: 500 };
+  assert.deepEqual(
+    await call("update_sender_profile", { senderProfileId: "9", mode: "add", updates: { mailboxFilter: { tagIds: ["t1"], limit: 500, sampling: "random" } } }),
+    { ...short, mailboxCount: 501, addedMailboxCount: 500 },
+  );
+  response = { results: [{ index: 0, profile: full }, { index: 1, error: "linkedin account not found" }] };
+  assert.deepEqual(
+    await call("bulk_create_sender_profiles", { profiles: [{ name: "Sender" }, { name: "B" }] }),
+    { results: [{ index: 0, profile: short }, { index: 1, error: "linkedin account not found" }] },
+  );
+});
+
 test("invalid account and contact inputs never reach the API", async (t) => {
   const client = await setup(t);
   const fetch = t.mock.method(globalThis, "fetch", async () => { throw new Error("Unexpected request"); });
@@ -94,6 +125,23 @@ test("invalid account and contact inputs never reach the API", async (t) => {
     ["get_linkedin_account", { linkedinAccountId: 1.5 }],
     ["submit_linkedin_account_otp", { linkedinAccountId: 42, code: "123" }],
     ["list_tags", { limit: 101 }],
+    ["list_mailbox_tags", { limit: 101 }],
+    ["list_mailbox_tags", { ids: Array(101).fill("t") }],
+    ["list_mailbox_tags", { mailboxIds: Array(1001).fill("m") }],
+    ["list_mailboxes", { statuses: ["deleted"] }],
+    ["create_sender_profile", { name: "A", mailboxIds: ["m1"] }],
+    ["create_sender_profile", { name: "A", mailboxFilter: { tagIds: ["t1"], sampling: "random" } }],
+    ["create_sender_profile", { name: "A", mailboxFilter: { tagIds: ["t1"], limit: 0 } }],
+    ["create_sender_profile", { name: "A", mailboxFilter: { tagIds: ["t1"], limit: 1001 } }],
+    ["create_sender_profile", { name: "A", mailboxFilter: { tagIds: ["t1"], limit: 10, sampling: "shuffle" } }],
+    ["create_sender_profile", { name: "A", mailboxFilter: { tagId: "t1", limit: 10 } }],
+    ["bulk_create_sender_profiles", { profiles: [{ name: "A", mailboxFilter: { sampling: "random" } }] }],
+    ["update_sender_profile", { senderProfileId: "9", updates: { mailboxIds: ["m1"] } }],
+    ["update_sender_profile", { senderProfileId: "9", updates: { mode: "add", mailboxFilter: { tagIds: ["t1"] } } }],
+    ["update_sender_profile", { senderProfileId: "9", mode: "merge", updates: { mailboxFilter: { tagIds: ["t1"] } } }],
+    ["update_sender_profile", { senderProfileId: "9", mode: "add", mailboxFilter: { tagIds: ["t1"] }, updates: {} }],
+    ["list_mailboxes", { status: "active" }],
+    ["update_sender_profile", { senderProfileId: "9", updates: { mailboxFilter: { tagIds: ["t1"], sampling: "random" } } }],
     ["list_dnc_entries", { limit: 1001 }],
     ["remove_dnc_entries", { dncs: [] }],
     ["remove_dnc_entries", { dncs: Array(1001).fill("example.com") }],
