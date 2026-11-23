@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.SalesforgeAI/forge-mcp",
-  "description": "MCP server for Salesforge, Primeforge, Leadsforge, Infraforge, Warmforge, and Mailforge",
+  "description": "MCP server for Salesforge, Primeforge, Leadsforge, Infraforge, Warmforge, Mailforge, and Calendio",
   "repository": {
     "url": "https://github.com/SalesforgeAI/forge-mcp",
     "source": "github"
@@ -54,6 +54,13 @@
         {
           "name": "MAILFORGE_API_KEY",
           "description": "API key for Mailforge (app.mailforge.ai > Settings > API)",
+          "isRequired": false,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "CALENDIO_API_KEY",
+          "description": "API key for Calendio (app.calendio.ai > Integrations > Developers)",
           "isRequired": false,
           "isSecret": true,
           "format": "string"
