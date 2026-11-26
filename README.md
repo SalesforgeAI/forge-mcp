@@ -176,6 +176,7 @@ src/
     ├── sender-profiles.ts# sender profile management
     ├── validations.ts    # email validation
     ├── webhooks.ts       # webhook management
+    ├── products.ts       # product cards and their translations
     ├── dnc.ts            # do-not-contact lists
     ├── custom-vars.ts    # custom variables
     ├── reference.ts      # action/condition type lookups
@@ -263,3 +264,17 @@ There is no independent LinkedIn deletion tool or email disconnect tool. The exi
 This requires [multichannel-api #1350](https://github.com/SalesforgeAI/multichannel-api/pull/1350) (SF-11040). The matching API change must be deployed before cookies can be used.
 
 `connect_linkedin_account` and `reconnect_linkedin_account` also accept `cookies` from a browser logged in to LinkedIn, instead of email and password. The cookies must include `li_at`; `li_a` is used when present (Sales Navigator). No OTP is asked, and the email is read from LinkedIn. Send `userAgent` of the same browser with them. A reconnect with cookies must be logged in to the same LinkedIn account and takes no email or password.
+
+## Salesforge product cards
+
+`update_product`, `delete_product` and `delete_product_translation` require [salesforge-api #3088](https://github.com/SalesforgeAI/salesforge-api/pull/3088) (SF-11385), as do the evaluations and translation IDs in product responses. The matching API change must be deployed before those can be used.
+
+| Tools | Behavior |
+| --- | --- |
+| `list_products`, `get_product` | Read cards with every language's content, quality evaluation and translation IDs. The entry whose language matches the card's `language` is the main one. |
+| `create_product` | Create a card in its main language, with optional translations. Translations take `industry` and `idealCustomerProfile` from the main product when left out. |
+| `update_product` | Change only the fields sent. Translations are matched by language: an existing one is updated, a new one is added. The main language can't change. Each language whose scored fields changed is scored again. |
+| `delete_product` | Delete a card. Sequences already using it keep running with its last content. |
+| `delete_product_translation` | Delete one translation by its `id`. The main language can't be deleted. |
+
+`pain`, `solution`, `costOfInaction` and `proofPoints` are scored and limited to 300 characters each.

@@ -11,6 +11,7 @@ import { registerMailboxTools } from "./tools/mailboxes.js";
 import { registerDncTools } from "./tools/dnc.js";
 import { registerCustomVarTools } from "./tools/custom-vars.js";
 import { registerWebhookTools } from "./tools/webhooks.js";
+import { registerProductTools } from "./tools/products.js";
 import { registerSequenceTools } from "./tools/sequences.js";
 import { registerSubsequenceTools } from "./tools/subsequences.js";
 import { registerNodeTools } from "./tools/nodes.js";
@@ -67,6 +68,7 @@ export function createServer(clients: ProductClients): McpServer {
     registerDncTools(server, c);
     registerCustomVarTools(server, c);
     registerWebhookTools(server, c);
+    registerProductTools(server, c);
     registerSequenceTools(server, c);
     registerSubsequenceTools(server, c);
     registerNodeTools(server, c);
